@@ -1,0 +1,203 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function contacts_menu() {
+    $items = array();
+
+    $items['<front>'] = array(
+        'title' => 'Contacts',
+        'description' => 'List, edit, or add contacts.',
+        'type' => MENU_NORMAL_ITEM,
+        'weight' => 4,
+        'menu_name' => 'main-menu',
+        'expanded' => TRUE,
+    );
+
+    $items['search_contact'] = array(
+        'title' => 'Search for contacts',
+        'description' => 'Search for contacts by a given string',
+        'page callback' => 'contacts_search',
+        'page arguments' => array(1),
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_CALLBACK,
+        'file' => 'contacts.api.inc',
+    );
+
+
+    $items['contacts/listing'] = array(
+        'title' => 'Contacts',
+        'description' => 'List, edit, or add contacts.',
+        'page callback' => 'contacts_list',
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_NORMAL_ITEM,
+        'menu_name' => 'main-menu',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/organizations/listing'] = array(
+        'title' => 'Organizations',
+        'description' => 'List, edit, or add organizations.',
+        'page callback' => 'organizations_list',
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/update_duplicates'] = array(
+        'title' => 'Contacts - Update duplicates',
+        'description' => 'Check for duplicates and update "conventions" attribute',
+        'page callback' => 'contacts_update_duplicates',
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_CALLBACK,
+        'weight' => 4,
+        'menu_name' => 'main-menu',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/datatables_listing'] = array(
+        'title' => 'Contacts',
+        'description' => 'List, edit, or add contacts.',
+        'page callback' => 'contacts_datatables_list',
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_CALLBACK,
+        'weight' => 4,
+        'menu_name' => 'main-menu',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/organizations_datatables_listing'] = array(
+        'title' => 'Organizations',
+        'description' => 'List, edit, or add organizations.',
+        'page callback' => 'organizations_datatables_list',
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_CALLBACK,
+        'weight' => 4,
+        'menu_name' => 'main-menu',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/add'] = array(
+        'title' => 'Contacts',
+        'description' => 'Add new contact',
+        'page callback' => 'contacts_add',
+        'page arguments' => array('contact'),
+        'access arguments' => array('create contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/organizations/add'] = array(
+        'title' => 'Organzations',
+        'description' => 'Add new organization',
+        'page callback' => 'contacts_add',
+        'page arguments' => array('organization'),
+        'access arguments' => array('create contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/export'] = array(
+        'title' => 'Contacts',
+        'description' => 'Export contacts',
+        'page callback' => 'contacts_export',
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/item/%/%/view'] = array(
+        'title' => 'Contacts',
+        'description' => 'View contact details',
+        'page callback' => 'contacts_view',
+        'page arguments' => array(2, 3),
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/item/%/%/edit'] = array(
+        'title' => 'Contacts',
+        'description' => 'Edit contact details',
+        'page callback' => 'contacts_edit',
+        'page arguments' => array(2, 3),
+        'access arguments' => array('create contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_LOCAL_TASK,
+        'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/item/%/%/delete'] = array(
+        'title' => 'Delete',
+        'description' => 'Delete contact',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('contacts_delete_confirm', 2, 3),
+        'access arguments' => array('create contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_LOCAL_TASK,
+        'context' => MENU_CONTEXT_INLINE,
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/organization/%/%/view'] = array(
+        'title' => 'Contacts',
+        'description' => 'View organization details',
+        'page callback' => 'organization_view',
+        'page arguments' => array(2, 3),
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'contacts_access',
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/organization/%/%/edit'] = array(
+        'title' => 'Contacts',
+        'description' => 'Edit organization details',
+        'page callback' => 'organization_edit',
+        'page arguments' => array(2, 3),
+        'access arguments' => array('create contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_LOCAL_TASK,
+        'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['contacts/organization/%/%/delete'] = array(
+        'title' => 'Delete',
+        'description' => 'Delete organization',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('organization_delete_confirm', 2, 3),
+        'access arguments' => array('create contacts content'),
+        'access callback' => 'contacts_access',
+        'type' => MENU_LOCAL_TASK,
+        'context' => MENU_CONTEXT_INLINE,
+        'file' => 'contacts.pages.inc',
+    );
+
+    $items['api/contacts/terms/%/%'] = array(
+        'title' => 'Contacts API (List terms)',
+        'page callback' => 'api_contacts_list_terms',
+        'page arguments' => array(3, 4),
+        'access arguments' => array('access content'),
+        'file' => 'contacts.api.inc',
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['contact/list/terms/%/%'] = array(
+        'page callback' => 'contacts_list_vocabulary_terms_from_cache',
+        'page arguments' => array(3, 4),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+        'file' => 'contacts.api.inc',
+    );
+
+    return $items;
+}

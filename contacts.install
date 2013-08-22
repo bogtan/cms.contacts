@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * Implement hook_install().
+ */
+function contacts_uninstall() {
+    user_role_delete(ROLE_MANAGE_SPECIES);
+
+    CMSUtils::vocabulary_delete(VOC_STATUS_ORGANIZATION);
+    CMSUtils::vocabulary_delete(VOC_STATUS_PERSON);
+    CMSUtils::vocabulary_delete(VOC_CONTACTS_REGION);
+    CMSUtils::vocabulary_delete(VOC_CONTACTS_MAILING);
+
+    CMSUtils::remove_menu_and_submenu('main-menu', 'Contacts', '<front>');
+}
+
+/**
+ * Implement hook_uninstall().
+ */
+function contacts_install() {
+    $role = CMSUtils::get_or_create_role(ROLE_MANAGE_CONTACTS);
+    menu_rebuild();
+    CMSUtils::vocabulary_create('Status organization', VOC_STATUS_ORGANIZATION);
+    CMSUtils::vocabulary_create('Status person', VOC_STATUS_PERSON);
+    CMSUtils::vocabulary_create('Mailing lists', VOC_CONTACTS_MAILING);
+    CMSUtils::vocabulary_create('Regions', VOC_CONTACTS_REGION);
+
+    if(!empty($role)) {
+        $rid = $role->rid;
+        $permissions = array(
+            'create contacts content' => TRUE,
+            'view contacts content' => TRUE,
+            'edit own contacts content' => TRUE,
+            'edit any contacts content' => TRUE,
+            'delete own contacts content' => TRUE,
+            'delete any contacts content' => TRUE,
+
+            'search content' => TRUE,
+            'use advanced search' => TRUE,
+        );
+
+        CMSUtils::set_vocabulary_permissions($permissions, VOC_STATUS_ORGANIZATION, 'species', ROLE_MANAGE_CONTACTS);
+        CMSUtils::set_vocabulary_permissions($permissions, VOC_STATUS_PERSON, 'species', ROLE_MANAGE_CONTACTS);
+        CMSUtils::set_vocabulary_permissions($permissions, VOC_CONTACTS_MAILING, 'species', ROLE_MANAGE_CONTACTS);
+        CMSUtils::set_vocabulary_permissions($permissions, VOC_CONTACTS_REGION, 'species', ROLE_MANAGE_CONTACTS);
+        user_role_change_permissions($rid, $permissions);
+        CMSUtils::role_add_permissions('administrator', $permissions);
+    } else {
+        watchdog('contacts', "Unable to load role name '@role'", array("@role" => ROLE_MANAGE_CONTACTS), WATCHDOG_WARNING);
+    }
+}

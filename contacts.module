@@ -1,0 +1,980 @@
+<?php
+
+define('ROLE_MANAGE_CONTACTS', 'manage contacts');
+
+define('VOC_STATUS_ORGANIZATION', 'contacts_status_organization');
+define('VOC_CONTACTS_REGION', 'contacts_regions');
+define('VOC_CONTACTS_MAILING', 'contacts_mailing');
+define('VOC_STATUS_PERSON', 'contacts_status_person');
+
+module_load_include('php', 'cms', 'CMSLDAP');
+module_load_include('menu', 'contacts', 'contacts');
+module_load_include('cron', 'contacts', 'contacts');
+module_load_include('inc', 'contacts', 'contacts.api');
+
+/**
+ * Implements hook_permission().
+*/
+function contacts_permission() {
+    return array(
+        'create contacts content' => array(
+            'title' => t('Add, edit and delete available LDAP contacts'),
+            'restrict access' => TRUE,
+        ),
+        'view contacts content' => array(
+            'title' => t('View available LDAP contacts'),
+        ),
+        'edit own contacts content' => array(
+            'title' => t('Edit own Contacts'),
+            'restrict access' => TRUE,
+        ),
+        'edit any contacts content' => array(
+            'title' => t('Edit any existing Contact'),
+            'restrict access' => TRUE,
+        ),
+        'delete own contacts content' => array(
+            'title' => t('Delete own Contacts'),
+            'restrict access' => TRUE,
+        ),
+        'delete any contacts content' => array(
+            'title' => t('Delete any existing contact'),
+            'restrict access' => TRUE,
+        ),
+    );
+}
+
+function contacts_menu_link_alter(&$item) {
+    $paths = array(
+        'contacts/listing',
+        'contacts/organizations/listing',
+    );
+
+    if (in_array($item['link_path'], $paths)) {
+        $path = '<front>';
+        $title = 'Contacts';
+        $mlid = db_select('menu_links' , 'ml')
+                ->condition('ml.link_path' , $path)
+                ->condition('ml.link_title' , $title)
+                ->fields('ml' , array('mlid'))
+                ->execute()
+                ->fetchField();
+
+        $item['plid'] = $mlid;
+    }
+}
+
+/**
+ * Implements hook_access().
+ *
+ * @todo Implement action logging;
+*/
+function contacts_access($permission, $account = NULL) {
+    global $user;
+
+    if (!isset($account)) {
+        $account = $user;
+    }
+
+    if ($account->uid == 1) {
+        return NODE_ACCESS_ALLOW;
+    }
+
+    // To reduce the number of SQL queries, we cache the user's permissions
+    // in a static variable.
+    // Use the advanced drupal_static() pattern, since this is called very often.
+    static $drupal_static_fast;
+    if (!isset($drupal_static_fast)) {
+      $drupal_static_fast['perm'] = &drupal_static(__FUNCTION__);
+    }
+
+    $perm = &$drupal_static_fast['perm'];
+    if (!isset($perm[$account->uid])) {
+        $role_permissions = user_role_permissions($account->roles);
+
+        $perms = array();
+        foreach ($role_permissions as $one_role) {
+            $perms += $one_role;
+        }
+        $perm[$account->uid] = $perms;
+    }
+
+    return isset($perm[$account->uid][$permission]);
+}
+
+/**
+ * Implementes hook_theme($existing, $type, $theme, $path)
+ */
+function contacts_theme($existing, $type, $theme, $path) {
+    $base = array(
+        'file' => 'theme.inc',
+        'path' => $path . '/theme',
+    );
+    return array(
+        'contacts_list' => array(
+            'template' => 'contacts/list',
+            'arguments' => array(),
+            'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
+        ),
+        'contacts_organizations_list' => array(
+            'template' => 'contacts/organizations/list',
+            'arguments' => array(),
+            'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
+        ),
+        'contacts_departments_list' => array(
+            'template' => 'contacts/departments/list',
+            'arguments' => array(),
+            'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
+        ),
+        'contacts_view' => array(
+            'template' => 'contacts/view',
+            'arguments' => array(),
+            'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
+        ),
+        'contacts_organization_view' => array(
+            'template' => 'contacts/organizations/view',
+            'arguments' => array(),
+            'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
+        ),
+        'contacts_pagination' => array(
+            'template' => 'contacts/pagination',
+            'arguments' => array(),
+            'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
+        ),
+        'table__contacts_template_country' => $base + array(
+            'variables' => array(
+                'header' => NULL,
+                'rows' => NULL,
+                'attributes' => array(),
+                'caption' => NULL,
+                'colgroups' => array(),
+                'sticky' => TRUE,
+                'empty' => '',
+                'settings' => array()
+            )
+        )
+    );
+}
+
+
+/**
+ * Implements hook_entity_view($entity, $type, $view_mode, $langcode)
+ */
+function contacts_entity_view($entity, $type, $view_mode, $langcode){
+    if($type != 'node' || $view_mode !== 'full') {
+        return;
+    }
+    // Inject the national focal points into the country profile page
+    if($entity->type == CMSContacts::$bundle_country_module) {
+        $entity->content[CMSContacts::$field_contacts_country] =
+            _contacts_get_contacts_render($entity, $view_mode);
+    }
+}
+
+
+function _contacts_get_contacts_render($country, $view_mode) {
+    $contacts = $country->national_focal_points[$country->language];
+    $rows = array();
+    foreach($contacts as $contact) {
+        $row = $contact['entity'];
+        $rows[] = array(
+            'data' => array(
+                sprintf('<a href="%s" onclick="%s">%s</a>',
+                    "javascript:void(0);",
+                    "alert('Not implemented'); return false;",
+                    $row->name),
+                'NOT IMPLEMENTED'
+            )
+        );
+    }
+    return array(
+        '#theme' => 'table__contacts_template_country',
+        '#weight' => 100, //@todo: computed
+        '#access' => TRUE, '#label_display' => 'hidden', '#view_mode' => $view_mode,
+        '#language' => $country->language,
+        '#field_name' => CMSContacts::$field_contacts_country,
+        '#field_type' => 'entityreference',
+        '#entity_type' => 'node',
+        '#bundle' => CMSContacts::$bundle_country_module,
+        '#items' => $contacts,
+        '#header' => array(t('Contact name'), t('Instrument(s)')),
+        '#rows' => $rows,
+        '#attributes' => array('class' => array('table', 'table-striped')),
+        '#caption' => FALSE,
+        '#colgroups' => array(),
+        '#sticky' => TRUE,
+        '#empty' => t('There are no national focal points for this country'),
+        '#settings' => array()
+    ) + $contacts;
+}
+
+
+/**
+ * Implements hook_node_load()
+ *
+ * Attach $node->national_focal_points to country nodes for rendering of related NFPs
+ */
+function contacts_node_load($nodes, $types) {
+    foreach($nodes as $node) {
+        switch($node->type) {
+            case CMSContacts::$bundle_country_module:
+                $nfps = CMSContacts::get_national_focal_points_for_country($node->nid);
+                $node->national_focal_points[$node->language] = array();
+                foreach($nfps as $row) {
+                    $node->national_focal_points[$node->language][] = array(
+                        'target_id' => $row->id,
+                        'entity' => $row,
+                        'access' => TRUE
+                    );
+                }
+                break;
+            default: break;
+        }
+    }
+}
+
+
+/**
+ * Utility methods specific to species.
+ */
+class CMSContacts extends CMSBase {
+
+    static $bundle_country_module = 'country';
+    static $field_contacts_country = 'national_focal_points';
+
+    private static $user_fields = array(
+        'first_name' => 'givenName',
+        'last_name' => 'sn',
+        'conventions' => 'conventions',
+        'personal_title' => 'personalTitle',
+        'position' => 'title',
+        'country' => 'iso2',
+        'country_post' => 'cpIso2',
+        'city' => 'st',
+        'zip_code' => 'postalCode',
+        'address' => 'street',
+        'organization' => 'o',
+        'department' => 'ou',
+        'work_phone' => 'workPhoneNumbers',
+        'home_phone' => 'homePhone',
+        'fax_number' => 'faxNumbers',
+        'mobile' => 'mobilePhoneNumbers',
+        'website' => 'websites',
+        'skype' => 'skype',
+        'description' => 'description',
+        'region' => 'region',
+        'availability' => 'cmsAvailability',
+        'organization_status' => 'statusOrganization',
+        'mailing_list' => 'mailingLists',
+        'person_status' => 'statusPerson',
+        'preferred_language' => 'preferredLanguages',
+        'additional_emails' => 'additionalEmails',
+    );
+
+    private static $organization_fields = array(
+        'name' => 'o',
+        'department' => 'ou',
+        'country' => 'iso2',
+        'country_post' => 'cpIso2',
+        'city' => 'st',
+        'zip_code' => 'postalCode',
+        'address' => 'street',
+        'region' => 'region',
+        'availability' => 'cmsAvailability',
+        'phone' => 'telephoneNumber',
+        'fax_number' => 'facsimileTelephoneNumber',
+        'description' => 'description',
+        'conventions' => 'conventions',
+        'mobile' => 'mobile',
+        'website' => 'website',
+        'skype' => 'skype',
+        'availability' => 'cmsAvailability',
+        'organization_status' => 'organizationStatus',
+        'mailing_list' => 'cmsMailing',
+        'preferred_language' => 'preferredLanguage',
+        'additional_emails' => 'additionalEmails',
+
+    );
+
+    private static $department_fields = array(
+        'name' => 'ou',
+        'country' => 'iso2',
+        'city' => 'st',
+        'zip_code' => 'postalCode',
+        'address' => 'street',
+        'phone' => 'telephoneNumber',
+        'fax_number' => 'facsimileTelephoneNumber',
+        'description' => 'description',
+        'conventions' => 'conventions',
+    );
+
+    /**
+     * Connect to LDAP Server
+     */
+
+    public static function agent() {
+        $file =  drupal_get_path('module', 'contacts') . '/local.ldap.config.json';
+        $config = CMSUtils::read_json($file, TRUE);
+        return new CMSLDAP($config);
+    }
+
+    public static function search_user($user_id, $agent) {
+        $agent->search($agent->people_dn, "(uid=$user_id)");
+        return $agent->get_entries();
+    }
+
+    public static function group_exists($group_name, $agent) {
+        $agent->search($agent->people_dn, "(cn=$group_name)");
+        $total = $agent->count_entries();
+        return ($total) ? TRUE : FALSE;
+    }
+
+    public static function user_in_group($group_name, $user, $agent) {
+        if (isset($user['conventions']) && isset($user['conventions']['count'])) {
+            unset($user['conventions']['count']);
+            if (in_array($group_name, $user['conventions'])) {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    public static function organization_in_group($group_name, $organization, $agent) {
+        if (isset($organization['conventions']) && $organization['conventions']['count']) {
+            unset($organization['conventions']['count']);
+            if (in_array($group_name, $organization['conventions'])) {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    public static function update_user_groups($user_id, $groups = array(), $agent) {
+        $instruments = array_keys(CMSLegalInstrument::get_mapped_instruments(TRUE));
+        $existing_groups = array_keys(CMSUtils::get_all_websites());
+        foreach ($existing_groups as $key => $existing_group) {
+            if (CMSContacts::user_in_group($existing_group, $user_id, $agent) && (!in_array($existing_group, array_values($groups)))) {
+                @$agent->delete_from_group($existing_group, array('uniquemember' => "uid=$user_id,ou=Users,o=CMS"));
+            }elseif (!CMSContacts::user_in_group($existing_group, $user_id, $agent) && (in_array($existing_group, array_values($groups)))){
+                @$agent->add_to_group($existing_group, array('uniqueMember' => "uid=$user_id,ou=Users,o=CMS"));
+            }
+        }
+    }
+
+    public static function generate_user_id($first_name = '', $last_name = '') {
+        $first_name = CMSUtils::alphanumeric($first_name);
+        $last_name = CMSUtils::alphanumeric($last_name);
+        if (strlen($first_name) > 5) {
+            $first_name = substr($first_name, 0, 5);
+        }
+
+        if (strlen($last_name) > 3) {
+            $last_name = substr($last_name, 0, 3);
+        }
+
+        return strtolower($first_name . $last_name);
+    }
+
+    /**
+     * Get user ID from dn
+     *
+     * @param   string   $dn
+     * @return  string
+    */
+    public static function user_id_from_dn($dn = '') {
+        $pattern = '/^uid\=[a-z]*/';
+        preg_match($pattern, $dn, $matches);
+
+        if (!empty($matches) && (strlen($matches[0]) > 5)) {
+            return str_replace('uid=', '', $matches[0]);
+        }else {
+            return '';
+        }
+    }
+
+    /**
+     * Prepare department data for LDAp insertion
+     *
+     * @param   array   $data
+     * @param   boolean $edit
+     *
+     * @return array    $department_data
+    */
+    public static function prepare_ldap_data($data = array(), $type = '', $edit = FALSE) {
+        $ldap_data = array();
+
+        switch ($type) {
+            case 'cmsContact':
+                $ldap_data = CMSContacts::prepare_user_data($data, $edit);
+
+                break;
+                default;
+            case 'cmsOrganization':
+                $ldap_data = CMSContacts::prepare_organization_data($data, $edit);
+
+                break;
+
+            case 'cmsDepartment':
+                $ldap_data = CMSContacts::perpare_department_data($data, $edit);
+
+                break;
+        }
+    }
+
+    /**
+     * Remove empty values from LDAP data to avoid "Invalid syntax" error
+     *
+     * @param   array   $data
+     *
+     * @return  array   $data
+    */
+    public static function clean_ldap_data(&$data, $edit = FALSE) {
+        foreach($data as $key => $value){
+            if ($key == 'cmsAvailability') {
+                $data[$key][0] = (isset($value[0]) && ($value[0] != "FALSE")) ? "TRUE" : "FALSE";
+            }else {
+                if(is_array($value)) {
+                    foreach($value as $key2 => $value2){
+                        if(empty($value2)){
+                            if ($edit) {
+                                $data[$key][$key2] = array();
+                            }else {
+                                unset($data[$key][$key2]);
+                            }
+                        }
+                    }
+                }
+
+                if(empty($data[$key])){
+                    if ($edit) {
+                        $data[$key] = array();
+                    }else {
+                        unset($data[$key]);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Prepare user data for LDAp insertion
+     *
+     * @param   array   $data
+     * @param   boolean $edit
+     *
+     * @return array    $ldap_data
+    */
+    public static function prepare_user_data($data = array(), $edit = FALSE) {
+        global $user;
+        date_default_timezone_set("Europe/Berlin");
+
+        $ldap_data = array(
+            'objectclass' => array(
+                'top',
+                'cmsContact',
+            ),
+            'lastModifiedTime' => array(
+                time(),
+            ),
+            'lastModifiedBy' => array(
+                $user->name,
+            ),
+        );
+
+        foreach (CMSContacts::$user_fields as $field => $ldap_field) {
+            if (isset($data[$field]) && (!empty($data[$field]))) {
+                if ($field == 'conventions') {
+                    $ldap_data[$ldap_field] = array_keys($data[$field]);
+                }elseif ($field == 'organization_status') {
+                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_STATUS_ORGANIZATION, array_keys($data[$field]));
+                }elseif ($field == 'mailing_list') {
+                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_CONTACTS_MAILING, array_keys($data[$field]));
+                }elseif ($field == 'region') {
+                    $term = taxonomy_term_load($data[$field]);
+                    if ($term && $term->vocabulary_machine_name == VOC_CONTACTS_REGION) {
+                        $ldap_data[$ldap_field][] = $term->name;
+                    }
+                }elseif ($field == 'person_status') {
+                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_STATUS_PERSON, array_keys($data[$field]));
+                }elseif($field == 'preferred_language'){
+                    if (!empty($data[$field])) {
+                        $preferred_languages = array();
+                        foreach ($data[$field] as $tid) {
+                            $term = taxonomy_term_load($tid);
+                            if ($term && $term->vocabulary_machine_name == VOC_UN_LANGUAGES) {
+                                $preferred_languages[] = $term->name;
+                            }
+                        }
+                        $ldap_data[$ldap_field][] = implode(',', $preferred_languages);
+                    }
+                }else {
+                    $ldap_data[$ldap_field][0] = $data[$field];
+                }
+            }else {
+                $ldap_data[$ldap_field] = array();
+            }
+        }
+
+        $ldap_data['cmsAvailability'][0] = (isset($data['availability']) && ($data['availability'] != 'FALSE')) ? 'TRUE' : 'FALSE';
+
+        $ldap_data['cn'][0] = $data['first_name'] . ' ' . $data['last_name'];
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'email', 'mail');
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'additional_emails', 'additionalEmails');
+
+        if (isset($data['personal_email']) && (!empty($data['personal_email']))) {
+            $ldap_data['personalEmail'][] = $data['personal_email'];
+        }
+
+        CMSContacts::clean_ldap_data($ldap_data, $edit);
+
+        if (!$edit) {
+            if ((!empty($data['first_name'])) && (!empty($data['last_name']))) {
+                $ldap_data['uid'][0] = CMSContacts::generate_user_id($data['first_name'], $data['last_name']);
+            }
+        }
+
+        if (array_key_exists('preferredLanguages', $ldap_data) && (!empty($ldap_data['preferredLanguages']))){
+            $ldap_data['preferredLanguages'][0] = implode(',', $ldap_data['preferredLanguages']);
+        }
+
+        return $ldap_data;
+    }
+
+    public static function prepare_multiple_valued_attribute(&$ldap_data, $data, $field, $ldap_field) {
+        if (array_key_exists($field, $data) && (!empty($data[$field]))) {
+            foreach($data[$field] as $value) {
+                $ldap_data[$ldap_field][] = $value;
+            }
+        }
+    }
+
+    /**
+     * Prepare organization data for LDAP insertion
+     *
+     * @param   array   $data
+     * @param   boolean $edit
+     *
+     * @return  array   $organization_data
+    */
+    public static function prepare_organization_data($data = array(), $edit = FALSE) {
+        global $user;
+
+        $ldap_data = array(
+            'objectclass' => array(
+                'top',
+                'organization',
+                'cmsOrganization',
+            ),
+            'lastModifiedTime' => array(
+                time(),
+            ),
+            'lastModifiedBy' => array(
+                $user->name,
+            ),
+        );
+
+        foreach (CMSContacts::$organization_fields as $field => $ldap_field) {
+            if (isset($data[$field]) && (!empty($data[$field]))) {
+                if ($field == 'conventions') {
+                    $ldap_data[$ldap_field] = array_keys($data[$field]);
+                }elseif ($field == 'organization_status') {
+                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_STATUS_ORGANIZATION, array_keys($data[$field]));
+                }elseif ($field == 'mailing_list') {
+                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_CONTACTS_MAILING, array_keys($data[$field]));
+                }elseif ($field == 'region') {
+                    $term = taxonomy_term_load($data[$field]);
+                    if ($term && $term->vocabulary_machine_name == VOC_CONTACTS_REGION) {
+                        $ldap_data[$ldap_field][] = $term->name;
+                    }
+                }elseif($field == 'preferred_language'){
+                    $term = taxonomy_term_load($data[$field]);
+                    if ($term && $term->vocabulary_machine_name == VOC_LANGUAGES) {
+                        $ldap_data[$ldap_field][] = $term->name;
+                    }
+                }else {
+                    $ldap_data[$ldap_field][0] = $data[$field];
+                }
+            }else {
+                $ldap_data[$ldap_field] = array();
+            }
+        }
+
+        $ldap_data['cmsAvailability'][0] = (isset($data['availability']) && ($data['availability'] != 'FALSE')) ? 'TRUE' : 'FALSE';
+
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'email', 'mail');
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'additional_emails', 'additionalEmails');
+
+        CMSContacts::clean_ldap_data($ldap_data, $edit);
+
+        if (!$edit) {
+            $ldap_data['oid'] = CMSUtils::random_string();
+        }
+
+        return $ldap_data;
+    }
+
+    /**
+     * Prepare department data for LDAP insertion
+     *
+     * @param   array   $data
+     * @param   boolean $edit
+     *
+     * @return  array   $ldap_data
+    */
+    public static function prepare_department_data($data = array(), $edit = FALSE) {
+        $ldap_data = array(
+            'objectclass' => array(
+                'top',
+                'organizationalUnit',
+                'cmsDepartment',
+            ),
+        );
+
+        foreach (CMSContacts::$department_fields as $field => $ldap_field) {
+            if (isset($data[$field]) && (!empty($data[$field]))) {
+                if ($field == 'conventions') {
+                    $ldap_data[$ldap_field] = array_keys($data[$field]);
+                }else {
+                    $ldap_data[$ldap_field] = $data[$field];
+                }
+            }else {
+                $ldap_data[$ldap_field] = NULL;
+            }
+        }
+
+        CMSContacts::clean_ldap_data($ldap_data, $edit);
+
+        if (!$edit) {
+            $ldap_data['did'] = CMSUtils::random_string();
+        }
+
+        return $ldap_data;
+    }
+
+    /**
+     * User structure for CSV file export
+     *
+     * @param   array   $data
+     * @param   array   $user
+     * @param   string  $attribute
+     *
+     * @return  boolean
+    */
+    public static function prepare_user_to_csv(&$data, $user, $attribute) {
+        if ((!isset($user[$attribute])) || (empty($user[$attribute]))) {
+            if ($attribute == 'mail') {
+                $data[] = '';
+                $data[] = '';
+            }else {
+                $data[] = '';
+            }
+
+            return true;
+        }
+
+        if ($attribute == 'conventions') {
+            unset($user[$attribute]['count']);
+            $data[] = implode(', ', $user[$attribute]);
+            return;
+        }elseif ($attribute == 'mail') {
+            (int) $count = $user[$attribute]['count'];
+            unset($user[$attribute]['count']);
+            if ($count == 1) {
+                $data[] = $user[$attribute][0];
+                $data[] = '';
+            }elseif ($count == 2) {
+                $data[] = $user[$attribute][0];
+                $data[] = $user[$attribute][1];
+            }else {
+                $data[] = '';
+                $data[] = '';
+            }
+
+            return true;
+        }elseif ($attribute == 'additionalemails'){
+            unset($user[$attribute]['count']);
+            $data[] = implode('; ', $user[$attribute]);
+            return;
+        }
+
+        if ($user[$attribute]['count'] == 1) {
+            if (($attribute == 'iso2') || ($attribute == 'cpiso2')) {
+                $country = Country::get_by_iso2(strtolower($user[$attribute][0]));
+                if ($country) {
+                    $string = $country->title;
+                }else {
+                    $string = $user[$attribute][0];
+                }
+            }else {
+                $string = $user[$attribute][0];
+            }
+        }elseif ($user[$attribute]['count'] > 1) {
+            unset($user[$attribute]['count']);
+            $string = implode('; ', $user[$attribute]);
+        }
+
+        $data[] = $string;
+
+        return true;
+    }
+
+    /**
+     * Check if a specified organization name exists.
+     * Create the organization if it doesn't exists.
+     *
+     * @param   string   $organization_name
+     * @param   array    $conventions
+     *
+     * @return  array    $organization
+    */
+    public static function get_or_create_organization($organization_name = '', $conventions = array()) {
+        $conventions = array_combine($conventions, $conventions);
+        $organization = array();
+        $agent = CMSContacts::agent();
+        $filter = '(&(objectClass=cmsOrganization)(o=' . $organization_name . '))';
+        if (!$agent->connected) {
+            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+        }else {
+            $result = $agent->search($agent->organization_dn, $filter);
+            $organizations = $agent->get_entries();
+            if ($organizations['count']) {
+                $organization = $organizations[0];
+            }else {
+                $organization = CMSContacts::prepare_organization_data(array('name' => $organization_name,
+                                                                             'conventions' => $conventions));
+                $dn = "oid=" . $organization['oid'] . "," . $agent->organization_dn;
+
+                if(!$agent->add($dn, $organization)) {
+                    drupal_set_message(t('The organization could not be saved.'), 'error');
+                }
+            }
+        }
+
+        return $organization;
+    }
+
+    /**
+     * Check if a specified department name exists.
+     * Create the department if it doesn't exists.
+     *
+     * @param   string   $department_name
+     * @param   array    $conventions
+     *
+     * @return  $array   $department
+    */
+    public static function get_or_create_department($department_name = '', $conventions = array()) {
+        $conventions = array_combine($conventions, $conventions);
+        $department = array();
+        $agent = CMSContacts::agent();
+        $filter = '(&(objectClass=cmsDeparment)(ou=' . $department_name . '))';
+
+        if (!$agent->connected) {
+            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+        }else {
+            $result = $agent->search($agent->department_dn, $filter);
+            $departments = $agent->get_entries();
+            if ($departments['count']) {
+                $department = $departments[0];
+            }else {
+                $department = CMSContacts::prepare_department_data(array('name' => $department_name,
+                                                                         'conventions' => $conventions));
+                $dn = "did=" . $department['did'] . "," . $agent->department_dn;
+
+                if(!$agent->add($dn, $department)) {
+                    drupal_set_message(t('The department could not be saved.'), 'error');
+                }
+            }
+        }
+
+        return $department;
+    }
+
+    /**
+     * Create a list of terms IDs of a specified list of terms names
+     *
+     * @param   array   $contact   An array with contact details
+     * @param   string  $attribute Attribute name where names are stored on contact
+     * @param   array   $terms   An associative array of terms IDs and terms names for the specified attribute
+     *
+     * @return  array   $contact_terms
+    */
+    public static function contact_map_terms($contact = array(), $attribute = '', $terms = array()) {
+        $contact_terms = array();
+        if (isset($contact[$attribute]) && (isset($contact[$attribute]['count'])) && ($contact[$attribute]['count'])) {
+            foreach ($contact[$attribute] as $key => $contact_term) {
+                if (is_numeric($key)) {
+                    $tid = array_search($contact_term, $terms);
+
+                    if ($tid) {
+                        $contact_terms[] = $tid;
+                    }
+                }
+            }
+        }
+
+        return $contact_terms;
+    }
+
+    /**
+     * Given a vocabulary machine name and an array of terms IDs return a list with terms names
+     *
+     * @param   string   $vocabulary_name   Vocabulary machine name where to look for specified terms IDs
+     * @param   array    $tids   IDs of terms for which to get the names
+     *
+     * return   array   $contact_terms   List of terms names
+    */
+    public static function contact_map_terms_by_ids($vocabulary_name = '', $tids = array()) {
+        $contact_terms = array();
+
+        $terms = taxonomy_term_load_multiple($tids);
+        if ($terms) {
+            foreach ($terms as $tid => $term) {
+                if ($term->vocabulary_machine_name == $vocabulary_name) {
+                    $contact_terms[] = $term->name;
+                }
+            }
+        }
+
+        return $contact_terms;
+    }
+
+    public static function get_contacts($filter = '', $associative = FALSE) {
+        $result = array();
+        $agent = CMSContacts::agent();
+
+        $ldap_filter = '(objectClass=cmsContact)';
+        if (!empty($filter)) {
+            $ldap_filter = '(&' . $ldap_filter . $filter . ')';
+        }
+
+        if (!$agent->connected) {
+            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+        }else {
+            $agent->search($agent->people_dn, $ldap_filter);
+            $contacts = $agent->get_entries();
+            if ($contacts['count']) {
+                unset($contacts['count']);
+                foreach ($contacts as $index => $contact) {
+                    if ($associative) {
+                        $result[] = array(
+                            'id' => $contact['uid'][0],
+                            'name' => $contact['cn'][0],
+                        );
+                    }
+                    $result[$contact['uid'][0]] = $contact['cn'][0];
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    public static function get_contact_related_content($uid = '', $content_type = '', $field = '', $only_title = FALSE) {
+        $related_nodes = array();
+        $query = new EntityFieldQuery();
+        $query = $query->entityCondition('entity_type', 'node')
+                ->propertyCondition('type', $content_type)
+                ->fieldCondition($field, 'value', $uid, '=')
+                ->execute();
+        if(isset($query['node']) && !empty($query['node'])) {
+            foreach ($query['node'] as $nid => $node_details) {
+                $node = node_load($nid);
+                if ($node) {
+                    if ($only_title) {
+                        $related_nodes[] = $node->title;
+                    }else {
+                        $related_nodes[] = $node;
+                    }
+                }
+            }
+        }
+
+        return $related_nodes;
+    }
+
+    /**
+     * Set LDAP contact on speciefied content type
+     *
+     * @param   string   $uid   Contact unique identifier
+     * @param   array    $nids  IDs of Drupal nodes for which to set the LDAP contact
+     * @param   string   $content_type   Drupal node type
+     * @param   string   $fields   Drupal node's field on which to save the relation with the LDAP contact
+    */
+    public static function set_contact_related_content($uid = '', $nids = array(), $content_type = '', $field = '') {
+        $existing_content = CMSContacts::get_contact_related_content($uid, $content_type, $field);
+        foreach ($existing_content as $node) {
+            if (!in_array($node->nid, $nids)) {
+                $wrapper = entity_metadata_wrapper('node', $node);
+                $values = $wrapper->{$field}->raw();
+                $key = array_search($uid, $values);
+                if ($key !== FALSE) {
+                    unset($node->{$field}[$node->language][$key]);
+                }
+                node_save($node);
+            }
+        }
+
+        if (!empty($nids)) {
+            foreach($nids as $nid) {
+                $node = node_load($nid);
+                if ($node) {
+                    $related_nodes = CMSBase::get_field_list_value($node, $fields);
+                    if (!in_array($uid, $related_nodes)) {
+                        $node->{$field}[$node->language][count($related_nodes)]['value'] = $uid;
+                        node_save($node);
+                    }
+                }
+            }
+        }else {
+            $related_nodes = CMSContacts::get_contact_related_content($uid, $content_type, $field);
+            foreach ($related_nodes as $node) {
+                $node->{$field}[$node->language] = array();
+                node_save($node);
+            }
+        }
+    }
+
+    public static function set_multiple_attribute(&$ldap_data = array(), $data = array(), $attribute = '', $ldap_attribute = '') {
+        $ldap_data[$ldap_attribute] = array();
+        if (isset($data[$attribute]) && (!empty($data[$attribute]))) {
+            $values = explode(',', $data[$attribute]);
+            foreach ($values as $value) {
+                $value = trim($value);
+                if (!in_array($value, array_values($ldap_data[$ldap_attribute]))) {
+                    $ldap_data[$ldap_attribute][] = $value;
+                }
+            }
+        }
+    }
+
+    public static function get_multiple_attribute($contact = array(), $ldap_attribute = '') {
+        $value = '';
+        if (isset($contact[$ldap_attribute]) && $contact[$ldap_attribute]['count']) {
+            foreach ($contact[$ldap_attribute] as $index => $attribute_value) {
+                if (is_numeric($index)) {
+                    $value .= $attribute_value;
+                    if (($index + 1) < $contact[$ldap_attribute]['count']) {
+                        $value .= ", ";
+                    }
+                }
+            }
+        }
+
+        return $value;
+    }
+
+
+    /**
+     * Retrieve the national focal points assigned to a specified country
+     * @param $id_country integer Country to filter by
+     * @return mixed Array of focal point objects
+     */
+    public static function get_national_focal_points_for_country($id_country) {
+        //@todo: Not implemented
+        $dummy = new stdClass();
+        $dummy->id = 1;
+        $dummy->name = 'John Doe';
+        return array($dummy);
+    }
+}

@@ -1,0 +1,49 @@
+<?php
+
+class CMSContactsTestCase extends CMSWebTestCase {
+
+    public static function getInfo() {
+        return array(
+            'name' => 'CMS Contacts Test',
+            'description' => 'Verify functionality of CMS Contacts module.',
+            'group' => 'CMS Tests'
+        );
+    }
+
+    function setUp() {
+        parent::setUp('cms', 'contacts');
+        $user = $this->drupalCreateUser(array('administer site configuration'));
+        $this->drupalLogin($user);
+        self::$bundle = 'contacts';
+    }
+
+    function test_security_role_anonymous() {
+        $this->drupalLogout();
+        $this->ensure_access_denied('contacts/listing', 'anonymous');
+    }
+
+    function test_security_role_authenticated() {
+        $user = $this->drupalCreateUser();
+        $this->drupalLogin($user);
+        $this->assertNotNull($this->loggedInUser);
+
+        $this->ensure_access_denied('contacts/listing', 'authenticated');
+    }
+
+
+    function testAddContact() {
+        
+    }
+
+    function testEditContact() {
+        
+    }
+
+    function testDeleteContact() {
+        
+    }
+
+    function test_get_national_focal_points_for_country() {
+        $this->fail('Not implemented');
+    }
+}
