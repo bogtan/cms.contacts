@@ -1,9 +1,7 @@
 name = "CMS Contacts"
 description = "CMS contacts module."
 package = CMS
-project = "CMS"
 core = 7.x
-version = 0.1
 
 dependencies[] = views
 dependencies[] = simpletest
