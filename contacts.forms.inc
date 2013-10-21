@@ -95,6 +95,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#required' => true,
         '#default_value' => isset($email_default) ? $email_default : '',
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $form['personal_email'] = array(
@@ -111,6 +112,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#default_value' => isset($work_phone_default) ? $work_phone_default : '',
         '#size' => 30,
         '#description' => t('Separate multiple entries with a comma.'),
+        '#maxlength' => 512,
     );
 
     $form['home_phone'] = array(
@@ -127,6 +129,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#default_value' => isset($mobile_phone_default) ? $mobile_phone_default : '',
         '#size' => 30,
         '#description' => t('Separate multiple entries with a comma.'),
+        '#maxlength' => 512,
     );
 
     $fax_default = CMSContacts::get_multiple_attribute($contact, 'faxnumbers');
@@ -136,6 +139,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#default_value' => isset($fax_default) ? $fax_default : '',
         '#size' => 30,
         '#description' => t('Separate multiple entries with a comma.'),
+        '#maxlength' => 512,
     );
 
     $form['skype'] = array(
@@ -153,6 +157,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#default_value' => $additional_email_default,
         '#description' => t('Separate multiple entries with a comma'),
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $website_default = CMSContacts::get_multiple_attribute($contact, 'websites');
@@ -162,6 +167,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#default_value' => isset($website_default) ? $website_default : '',
         '#description' => t('Separate multiple entries with a comma'),
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $form['position'] = array(
@@ -208,6 +214,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#title' => t('Organization'),
         '#default_value' => isset($contact['o'][0]) ? $contact['o'][0] : '',
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $organization_statuses = CMSUtils::vocabulary_get_terms(VOC_STATUS_ORGANIZATION);
@@ -227,6 +234,7 @@ function contacts_form($form, &$form_state, $contact) {
         '#title' => t('Department'),
         '#default_value' => isset($contact['ou'][0]) ? $contact['ou'][0] : '',
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $mailing_lists = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_MAILING);
@@ -242,14 +250,6 @@ function contacts_form($form, &$form_state, $contact) {
     );
 
     $languages = CMSUtils::vocabulary_get_terms(VOC_UN_LANGUAGES);
-    if (array_key_exists('preferredlanguages', $contact)) {
-        $contact['preferredlanguages'] = explode(',', $contact['preferredlanguages'][0]);
-        $contact['preferredlanguages']['count'] = count($contact['preferredlanguages']);
-    }else {
-        $contact['preferredlanguages'] = array();
-        $contact['preferredlanguages']['count'] = 0;
-    }
-
     $contact_language = CMSContacts::contact_map_terms($contact, 'preferredlanguages', $languages);
 
     $form['preferred_language'] = array(
@@ -313,7 +313,7 @@ function contacts_form($form, &$form_state, $contact) {
     );
 
     $region_options[''] = t('Select region');
-    $regions  = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_REGION);
+    $regions  = CMSUtils::vocabulary_get_terms(VOC_REGION);
     $contact_regions = CMSContacts::contact_map_terms($contact, 'region', $regions);
     $region_options = $region_options + $regions;
 
@@ -429,6 +429,7 @@ function organization_form($form, &$form_state, $organization) {
         '#default_value' => isset($organization['o'][0]) ? $organization['o'][0] : '',
         '#size' =>  30,
         '#label' => 'inline',
+        '#maxlength' => 512,
     );
 
     $form['email'] = array(
@@ -455,6 +456,7 @@ function organization_form($form, &$form_state, $organization) {
         '#title' => t('Department'),
         '#default_value' => isset($organization['ou'][0]) ? $organization['ou'][0] : '',
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $mailing_lists = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_MAILING);
@@ -506,6 +508,7 @@ function organization_form($form, &$form_state, $organization) {
         '#default_value' => $additional_email_default,
         '#description' => t('Separated by comma'),
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $website_default = CMSContacts::get_multiple_attribute($organization, 'websites');
@@ -514,6 +517,7 @@ function organization_form($form, &$form_state, $organization) {
         '#title' => t('Website'),
         '#default_value' => isset($website_default) ? $website_default : '',
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $form['country'] = array(
@@ -531,7 +535,7 @@ function organization_form($form, &$form_state, $organization) {
     );
 
     $region_options[''] = t('Select region');
-    $regions  = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_REGION);
+    $regions  = CMSUtils::vocabulary_get_terms(VOC_REGION);
     $contact_regions = CMSContacts::contact_map_terms($organization, 'region', $regions);
     $region_options = $region_options + $regions;
 
@@ -568,12 +572,13 @@ function organization_form($form, &$form_state, $organization) {
         '#title' => t('Description'),
         '#default_value' => isset($organization['description'][0]) ? $organization['description'][0] : '',
         '#rows' => 5,
+        '#maxlength' => 512,
     );
 
     $form['phone'] = array(
         '#type' => 'textfield',
         '#title' => t('Phone number'),
-        '#default_value' => isset($organization['telephonenumber'][0]) ? $organization['telephonenumber'][0] : '',
+        '#default_value' => isset($organization['workphonenumbers'][0]) ? $organization['workphonenumbers'][0] : '',
         '#size' => 30,
     );
 
@@ -583,6 +588,7 @@ function organization_form($form, &$form_state, $organization) {
         '#title' => t('Mobile'),
         '#default_value' => isset($mobile_phone_default) ? $mobile_phone_default : '',
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $fax_default = CMSContacts::get_multiple_attribute($organization, 'faxnumbers');
@@ -591,6 +597,7 @@ function organization_form($form, &$form_state, $organization) {
         '#title' => t('Fax'),
         '#default_value' => isset($fax_default) ? $fax_default : '',
         '#size' => 30,
+        '#maxlength' => 512,
     );
 
     $current_profile = CMSUtils::get_current_profile();

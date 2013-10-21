@@ -33,7 +33,7 @@ function api_contacts_list_terms($profile = '', $type = '') {
         $vocabularies = file_get_contents($cache_file);
         return (array) json_decode($vocabularies);
     }else {
-        $vocabularies = array(VOC_CONTACTS_MAILING, VOC_CONTACTS_REGION, VOC_STATUS_ORGANIZATION, VOC_STATUS_PERSON);
+        $vocabularies = array(VOC_CONTACTS_MAILING, VOC_REGION, VOC_STATUS_ORGANIZATION, VOC_STATUS_PERSON);
         $terms = array();
 
         foreach ($vocabularies as $vocabulary) {

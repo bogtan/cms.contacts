@@ -280,17 +280,16 @@ class CMSContacts extends CMSBase {
         'address' => 'street',
         'region' => 'region',
         'availability' => 'cmsAvailability',
-        'phone' => 'telephoneNumber',
-        'fax_number' => 'facsimileTelephoneNumber',
+        'phone' => 'workPhoneNumbers',
+        'fax_number' => 'faxNumbers',
         'description' => 'description',
         'conventions' => 'conventions',
-        'mobile' => 'mobile',
-        'website' => 'website',
+        'mobile' => 'mobilePhoneNumbers',
+        'website' => 'websites',
         'skype' => 'skype',
-        'availability' => 'cmsAvailability',
-        'organization_status' => 'organizationStatus',
-        'mailing_list' => 'cmsMailing',
-        'preferred_language' => 'preferredLanguage',
+        'organization_status' => 'statusOrganization',
+        'mailing_list' => 'mailingLists',
+        'preferred_language' => 'preferredLanguages',
         'additional_emails' => 'additionalEmails',
 
     );
@@ -370,7 +369,7 @@ class CMSContacts extends CMSBase {
         }
 
         if (strlen($last_name) > 3) {
-            $last_name = substr($last_name, 0, 3);
+            $last_name = substr($last_name, 0, 5);
         }
 
         return strtolower($first_name . $last_name);
@@ -492,7 +491,7 @@ class CMSContacts extends CMSBase {
                     $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_CONTACTS_MAILING, array_keys($data[$field]));
                 }elseif ($field == 'region') {
                     $term = taxonomy_term_load($data[$field]);
-                    if ($term && $term->vocabulary_machine_name == VOC_CONTACTS_REGION) {
+                    if ($term && $term->vocabulary_machine_name == VOC_REGION) {
                         $ldap_data[$ldap_field][] = $term->name;
                     }
                 }elseif ($field == 'person_status') {
@@ -504,9 +503,10 @@ class CMSContacts extends CMSBase {
                             $term = taxonomy_term_load($tid);
                             if ($term && $term->vocabulary_machine_name == VOC_UN_LANGUAGES) {
                                 $preferred_languages[] = $term->name;
+                                $preferred_languages['preferred_language'] = implode(',', $preferred_languages);
                             }
                         }
-                        $ldap_data[$ldap_field][] = implode(',', $preferred_languages);
+                        CMSContacts::set_multiple_attribute($ldap_data, $preferred_languages, 'preferred_language', CMSContacts::$user_fields['preferred_language']);
                     }
                 }else {
                     $ldap_data[$ldap_field][0] = $data[$field];
@@ -520,7 +520,11 @@ class CMSContacts extends CMSBase {
 
         $ldap_data['cn'][0] = $data['first_name'] . ' ' . $data['last_name'];
         CMSContacts::set_multiple_attribute($ldap_data, $data, 'email', 'mail');
-        CMSContacts::set_multiple_attribute($ldap_data, $data, 'additional_emails', 'additionalEmails');
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'additional_emails', CMSContacts::$user_fields['additional_emails']);
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'website', CMSContacts::$user_fields['website']);
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'mobile', CMSContacts::$user_fields['mobile']);
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'work_phone', CMSContacts::$user_fields['work_phone']);
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'fax_number', CMSContacts::$user_fields['fax_number']);
 
         if (isset($data['personal_email']) && (!empty($data['personal_email']))) {
             $ldap_data['personalEmail'][] = $data['personal_email'];
@@ -532,10 +536,6 @@ class CMSContacts extends CMSBase {
             if ((!empty($data['first_name'])) && (!empty($data['last_name']))) {
                 $ldap_data['uid'][0] = CMSContacts::generate_user_id($data['first_name'], $data['last_name']);
             }
-        }
-
-        if (array_key_exists('preferredLanguages', $ldap_data) && (!empty($ldap_data['preferredLanguages']))){
-            $ldap_data['preferredLanguages'][0] = implode(',', $ldap_data['preferredLanguages']);
         }
 
         return $ldap_data;
@@ -584,13 +584,17 @@ class CMSContacts extends CMSBase {
                     $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_CONTACTS_MAILING, array_keys($data[$field]));
                 }elseif ($field == 'region') {
                     $term = taxonomy_term_load($data[$field]);
-                    if ($term && $term->vocabulary_machine_name == VOC_CONTACTS_REGION) {
+                    if ($term && $term->vocabulary_machine_name == VOC_REGION) {
                         $ldap_data[$ldap_field][] = $term->name;
                     }
                 }elseif($field == 'preferred_language'){
-                    $term = taxonomy_term_load($data[$field]);
-                    if ($term && $term->vocabulary_machine_name == VOC_LANGUAGES) {
-                        $ldap_data[$ldap_field][] = $term->name;
+                    $terms = taxonomy_term_load_multiple($data[$field]);
+                    if ($terms) {
+                        foreach ($terms as $term) {
+                            if ($term->vocabulary_machine_name == VOC_UN_LANGUAGES) {
+                                $ldap_data[$ldap_field][] = $term->name;
+                            }
+                        }
                     }
                 }else {
                     $ldap_data[$ldap_field][0] = $data[$field];
@@ -604,6 +608,7 @@ class CMSContacts extends CMSBase {
 
         CMSContacts::set_multiple_attribute($ldap_data, $data, 'email', 'mail');
         CMSContacts::set_multiple_attribute($ldap_data, $data, 'additional_emails', 'additionalEmails');
+        CMSContacts::set_multiple_attribute($ldap_data, $data, 'website', 'websites');
 
         CMSContacts::clean_ldap_data($ldap_data, $edit);
 
