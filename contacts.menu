@@ -27,7 +27,7 @@ function contacts_menu() {
     );
 
 
-    $items['contacts/listing'] = array(
+    $items['manage/contacts/listing'] = array(
         'title' => 'Contacts',
         'description' => 'List, edit, or add contacts.',
         'page callback' => 'contacts_list',
@@ -38,7 +38,7 @@ function contacts_menu() {
         'file' => 'contacts.pages.inc',
     );
 
-    $items['contacts/organizations/listing'] = array(
+    $items['manage/contacts/organizations/listing'] = array(
         'title' => 'Organizations',
         'description' => 'List, edit, or add organizations.',
         'page callback' => 'organizations_list',
