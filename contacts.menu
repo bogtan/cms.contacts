@@ -1,19 +1,34 @@
 <?php
 
 /**
+ * Implements hook_menu_alter().
+*/
+function contacts_menu_alter(&$items) {
+    $items['manage/contacts/listing']['page callback'] = 'contacts_list';
+    $items['manage/contacts/listing']['file'] = 'contacts.pages.inc';
+    $items['manage/contacts/listing']['access arguments'] = array('view contacts content');
+    $items['manage/contacts/listing']['access callback'] = 'contacts_access';
+
+    $items['manage/contacts/organizations/listing']['page callback'] = 'organizations_list';
+    $items['manage/contacts/organizations/listing']['file'] = 'contacts.pages.inc';
+    $items['manage/contacts/organizations/listing']['access arguments'] = array('view contacts content');
+    $items['manage/contacts/organizations/listing']['access callback'] = 'contacts_access';
+}
+
+/**
  * Implements hook_menu().
  */
 function contacts_menu() {
     $items = array();
 
-    $items['<front>'] = array(
-        'title' => 'Contacts',
-        'description' => 'List, edit, or add contacts.',
-        'type' => MENU_NORMAL_ITEM,
-        'weight' => 4,
-        'menu_name' => 'main-menu',
-        'expanded' => TRUE,
-    );
+    #$items['<front>'] = array(
+    #    'title' => 'Contacts',
+    #    'description' => 'List, edit, or add contacts.',
+    #    'type' => MENU_NORMAL_ITEM,
+    #    'weight' => 4,
+    #    'menu_name' => 'main-menu',
+    #    'expanded' => TRUE,
+    #);
 
     $items['search_contact'] = array(
         'title' => 'Search for contacts',
@@ -27,25 +42,25 @@ function contacts_menu() {
     );
 
 
-    $items['manage/contacts/listing'] = array(
-        'title' => 'Contacts',
-        'description' => 'List, edit, or add contacts.',
-        'page callback' => 'contacts_list',
-        'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
-        'type' => MENU_NORMAL_ITEM,
-        'menu_name' => 'main-menu',
-        'file' => 'contacts.pages.inc',
-    );
-
-    $items['manage/contacts/organizations/listing'] = array(
-        'title' => 'Organizations',
-        'description' => 'List, edit, or add organizations.',
-        'page callback' => 'organizations_list',
-        'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
-        'file' => 'contacts.pages.inc',
-    );
+    #$items['manage/contacts/listing'] = array(
+    #    'title' => 'Contacts',
+    #    'description' => 'List, edit, or add contacts.',
+    #    'page callback' => 'contacts_list',
+    #    'access arguments' => array('view contacts content'),
+    #    'access callback' => 'contacts_access',
+    #    'type' => MENU_NORMAL_ITEM,
+    #    'menu_name' => 'main-menu',
+    #    'file' => 'contacts.pages.inc',
+    #);
+    #
+    #$items['manage/contacts/organizations/listing'] = array(
+    #    'title' => 'Organizations',
+    #    'description' => 'List, edit, or add organizations.',
+    #    'page callback' => 'organizations_list',
+    #    'access arguments' => array('view contacts content'),
+    #    'access callback' => 'contacts_access',
+    #    'file' => 'contacts.pages.inc',
+    #);
 
     $items['contacts/update_duplicates'] = array(
         'title' => 'Contacts - Update duplicates',
