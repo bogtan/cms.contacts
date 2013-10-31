@@ -5,12 +5,12 @@
 */
 function contacts_menu_alter(&$items) {
     $items['manage/contacts/listing']['page callback'] = 'contacts_list';
-    $items['manage/contacts/listing']['file'] = 'contacts.pages.inc';
+    $items['manage/contacts/listing']['file'] = drupal_get_path('module', 'contacts') . '/contacts.pages.inc';
     $items['manage/contacts/listing']['access arguments'] = array('view contacts content');
     $items['manage/contacts/listing']['access callback'] = 'contacts_access';
 
     $items['manage/contacts/organizations/listing']['page callback'] = 'organizations_list';
-    $items['manage/contacts/organizations/listing']['file'] = 'contacts.pages.inc';
+    $items['manage/contacts/organizations/listing']['file'] = drupal_get_path('module', 'contacts') . '/contacts.pages.inc';
     $items['manage/contacts/organizations/listing']['access arguments'] = array('view contacts content');
     $items['manage/contacts/organizations/listing']['access callback'] = 'contacts_access';
 }
