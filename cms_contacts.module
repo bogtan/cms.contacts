@@ -311,7 +311,7 @@ class CMSContacts extends CMSBase {
      */
 
     public static function agent() {
-        $file =  drupal_get_path('module', 'contacts') . '/local.ldap.config.json';
+        $file =  drupal_get_path('module', 'cms_contacts') . '/local.ldap.config.json';
         $config = CMSUtils::read_json($file, TRUE);
         return new CMSLDAP($config);
     }

@@ -5,12 +5,12 @@
 */
 function contacts_menu_alter(&$items) {
     $items['manage/contacts/listing']['page callback'] = 'contacts_list';
-    $items['manage/contacts/listing']['file'] = drupal_get_path('module', 'contacts') . '/contacts.pages.inc';
+    $items['manage/contacts/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
     $items['manage/contacts/listing']['access arguments'] = array('view contacts content');
     $items['manage/contacts/listing']['access callback'] = 'contacts_access';
 
     $items['manage/contacts/organizations/listing']['page callback'] = 'organizations_list';
-    $items['manage/contacts/organizations/listing']['file'] = drupal_get_path('module', 'contacts') . '/contacts.pages.inc';
+    $items['manage/contacts/organizations/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
     $items['manage/contacts/organizations/listing']['access arguments'] = array('view contacts content');
     $items['manage/contacts/organizations/listing']['access callback'] = 'contacts_access';
 }
@@ -38,7 +38,7 @@ function contacts_menu() {
         'access arguments' => array('view contacts content'),
         'access callback' => 'contacts_access',
         'type' => MENU_CALLBACK,
-        'file' => 'contacts.api.inc',
+        'file' => 'cms_contacts.api.inc',
     );
 
 
@@ -50,7 +50,7 @@ function contacts_menu() {
     #    'access callback' => 'contacts_access',
     #    'type' => MENU_NORMAL_ITEM,
     #    'menu_name' => 'main-menu',
-    #    'file' => 'contacts.pages.inc',
+    #    'file' => 'cms_contacts.pages.inc',
     #);
     #
     #$items['manage/contacts/organizations/listing'] = array(
@@ -59,7 +59,7 @@ function contacts_menu() {
     #    'page callback' => 'organizations_list',
     #    'access arguments' => array('view contacts content'),
     #    'access callback' => 'contacts_access',
-    #    'file' => 'contacts.pages.inc',
+    #    'file' => 'cms_contacts.pages.inc',
     #);
 
     $items['contacts/update_duplicates'] = array(
@@ -71,7 +71,7 @@ function contacts_menu() {
         'type' => MENU_CALLBACK,
         'weight' => 4,
         'menu_name' => 'main-menu',
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/datatables_listing'] = array(
@@ -83,7 +83,7 @@ function contacts_menu() {
         'type' => MENU_CALLBACK,
         'weight' => 4,
         'menu_name' => 'main-menu',
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/organizations_datatables_listing'] = array(
@@ -95,7 +95,7 @@ function contacts_menu() {
         'type' => MENU_CALLBACK,
         'weight' => 4,
         'menu_name' => 'main-menu',
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/add'] = array(
@@ -106,7 +106,7 @@ function contacts_menu() {
         'access arguments' => array('create contacts content'),
         'access callback' => 'contacts_access',
         'type' => MENU_DEFAULT_LOCAL_TASK,
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/organizations/add'] = array(
@@ -117,7 +117,7 @@ function contacts_menu() {
         'access arguments' => array('create contacts content'),
         'access callback' => 'contacts_access',
         'type' => MENU_DEFAULT_LOCAL_TASK,
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/export'] = array(
@@ -126,7 +126,7 @@ function contacts_menu() {
         'page callback' => 'contacts_export',
         'access arguments' => array('view contacts content'),
         'access callback' => 'contacts_access',
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/item/%/%/view'] = array(
@@ -136,7 +136,7 @@ function contacts_menu() {
         'page arguments' => array(2, 3),
         'access arguments' => array('view contacts content'),
         'access callback' => 'contacts_access',
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/item/%/%/edit'] = array(
@@ -148,7 +148,7 @@ function contacts_menu() {
         'access callback' => 'contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/item/%/%/delete'] = array(
@@ -160,7 +160,7 @@ function contacts_menu() {
         'access callback' => 'contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_INLINE,
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/organization/%/%/view'] = array(
@@ -170,7 +170,7 @@ function contacts_menu() {
         'page arguments' => array(2, 3),
         'access arguments' => array('view contacts content'),
         'access callback' => 'contacts_access',
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/organization/%/%/edit'] = array(
@@ -182,7 +182,7 @@ function contacts_menu() {
         'access callback' => 'contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['contacts/organization/%/%/delete'] = array(
@@ -194,7 +194,7 @@ function contacts_menu() {
         'access callback' => 'contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_INLINE,
-        'file' => 'contacts.pages.inc',
+        'file' => 'cms_contacts.pages.inc',
     );
 
     $items['api/contacts/terms/%/%'] = array(
@@ -202,7 +202,7 @@ function contacts_menu() {
         'page callback' => 'api_contacts_list_terms',
         'page arguments' => array(3, 4),
         'access arguments' => array('access content'),
-        'file' => 'contacts.api.inc',
+        'file' => 'cms_contacts.api.inc',
         'type' => MENU_CALLBACK,
     );
 
@@ -211,7 +211,7 @@ function contacts_menu() {
         'page arguments' => array(3, 4),
         'access arguments' => array('access content'),
         'type' => MENU_CALLBACK,
-        'file' => 'contacts.api.inc',
+        'file' => 'cms_contacts.api.inc',
     );
 
     return $items;
