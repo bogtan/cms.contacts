@@ -859,7 +859,7 @@ function organization_view($organization_id, $group) {
 /**
  * Contacts add form validate handler
 */
-function contacts_form_validate($form, &$form_state) {
+function cms_contacts_form_validate($form, &$form_state) {
     $values = $form_state['values'];
     if (!empty($value['email']) && !valid_email_address($values['email'])) {
         form_set_error('email', t('Enter a valid email address.'));
@@ -898,7 +898,7 @@ function organization_form_validate($form, &$form_state) {
 /**
  * Contacts add form submit handler
 */
-function contacts_form_submit($form, &$form_state) {
+function cms_contacts_form_submit($form, &$form_state) {
     $agent = CMSContacts::agent();
     $edit = (isset($form['#contact']) && (!empty($form['#contact']))) ? TRUE : FALSE;
 
@@ -1076,7 +1076,7 @@ function contacts_add($type) {
 
     switch($type) {
         case 'contact':
-            return drupal_get_form('contacts_form', array());
+            return drupal_get_form('cms_contacts_form', array());
             default;
             break;
 
@@ -1112,7 +1112,7 @@ function contacts_edit($contact_id, $group) {
     drupal_set_breadcrumb($breadcrumb);
     $page_title = $contact['givenname'][0] . ' ' . $contact['sn'][0];
     drupal_set_title(t('<em>Edit @type</em> @title', array('@type' => 'Contact', '@title' => $page_title)), PASS_THROUGH);
-    return drupal_get_form('contacts_form', $contact);
+    return drupal_get_form('cms_contacts_form', $contact);
 }
 
 

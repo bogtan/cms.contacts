@@ -15,7 +15,7 @@ module_load_include('inc', 'contacts', 'contacts.api');
 /**
  * Implements hook_permission().
 */
-function contacts_permission() {
+function cms_contacts_permission() {
     return array(
         'create contacts content' => array(
             'title' => t('Add, edit and delete available LDAP contacts'),
@@ -43,7 +43,7 @@ function contacts_permission() {
     );
 }
 
-function contacts_menu_link_alter(&$item) {
+function cms_contacts_menu_link_alter(&$item) {
     $paths = array(
         'contacts/listing',
         'contacts/organizations/listing',
@@ -68,7 +68,7 @@ function contacts_menu_link_alter(&$item) {
  *
  * @todo Implement action logging;
 */
-function contacts_access($permission, $account = NULL) {
+function cms_contacts_access($permission, $account = NULL) {
     global $user;
 
     if (!isset($account)) {
@@ -104,7 +104,7 @@ function contacts_access($permission, $account = NULL) {
 /**
  * Implementes hook_theme($existing, $type, $theme, $path)
  */
-function contacts_theme($existing, $type, $theme, $path) {
+function cms_contacts_theme($existing, $type, $theme, $path) {
     $base = array(
         'file' => 'theme.inc',
         'path' => $path . '/theme',
@@ -159,7 +159,7 @@ function contacts_theme($existing, $type, $theme, $path) {
 /**
  * Implements hook_entity_view($entity, $type, $view_mode, $langcode)
  */
-function contacts_entity_view($entity, $type, $view_mode, $langcode){
+function cms_contacts_entity_view($entity, $type, $view_mode, $langcode){
     if($type != 'node' || $view_mode !== 'full') {
         return;
     }
@@ -213,7 +213,7 @@ function _contacts_get_contacts_render($country, $view_mode) {
  *
  * Attach $node->national_focal_points to country nodes for rendering of related NFPs
  */
-function contacts_node_load($nodes, $types) {
+function cms_contacts_node_load($nodes, $types) {
     foreach($nodes as $node) {
         switch($node->type) {
             case CMSContacts::$bundle_country_module:

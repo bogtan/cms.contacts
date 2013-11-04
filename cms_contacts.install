@@ -3,7 +3,7 @@
 /**
  * Implement hook_install().
  */
-function contacts_uninstall() {
+function cms_contacts_uninstall() {
     user_role_delete(ROLE_MANAGE_SPECIES);
 
     CMSUtils::vocabulary_delete(VOC_STATUS_ORGANIZATION);
@@ -17,7 +17,7 @@ function contacts_uninstall() {
 /**
  * Implement hook_uninstall().
  */
-function contacts_install() {
+function cms_contacts_install() {
     $role = CMSUtils::get_or_create_role(ROLE_MANAGE_CONTACTS);
     menu_rebuild();
     CMSUtils::vocabulary_create('Status organization', VOC_STATUS_ORGANIZATION);

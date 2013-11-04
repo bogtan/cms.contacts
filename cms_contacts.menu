@@ -3,22 +3,22 @@
 /**
  * Implements hook_menu_alter().
 */
-function contacts_menu_alter(&$items) {
+function cms_contacts_menu_alter(&$items) {
     $items['manage/contacts/listing']['page callback'] = 'contacts_list';
     $items['manage/contacts/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
     $items['manage/contacts/listing']['access arguments'] = array('view contacts content');
-    $items['manage/contacts/listing']['access callback'] = 'contacts_access';
+    $items['manage/contacts/listing']['access callback'] = 'cms_contacts_access';
 
     $items['manage/contacts/organizations/listing']['page callback'] = 'organizations_list';
     $items['manage/contacts/organizations/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
     $items['manage/contacts/organizations/listing']['access arguments'] = array('view contacts content');
-    $items['manage/contacts/organizations/listing']['access callback'] = 'contacts_access';
+    $items['manage/contacts/organizations/listing']['access callback'] = 'cms_contacts_access';
 }
 
 /**
  * Implements hook_menu().
  */
-function contacts_menu() {
+function cms_contacts_menu() {
     $items = array();
 
     #$items['<front>'] = array(
@@ -36,7 +36,7 @@ function contacts_menu() {
         'page callback' => 'contacts_search',
         'page arguments' => array(1),
         'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_CALLBACK,
         'file' => 'cms_contacts.api.inc',
     );
@@ -47,7 +47,7 @@ function contacts_menu() {
     #    'description' => 'List, edit, or add contacts.',
     #    'page callback' => 'contacts_list',
     #    'access arguments' => array('view contacts content'),
-    #    'access callback' => 'contacts_access',
+    #    'access callback' => 'cms_contacts_access',
     #    'type' => MENU_NORMAL_ITEM,
     #    'menu_name' => 'main-menu',
     #    'file' => 'cms_contacts.pages.inc',
@@ -58,7 +58,7 @@ function contacts_menu() {
     #    'description' => 'List, edit, or add organizations.',
     #    'page callback' => 'organizations_list',
     #    'access arguments' => array('view contacts content'),
-    #    'access callback' => 'contacts_access',
+    #    'access callback' => 'cms_contacts_access',
     #    'file' => 'cms_contacts.pages.inc',
     #);
 
@@ -67,7 +67,7 @@ function contacts_menu() {
         'description' => 'Check for duplicates and update "conventions" attribute',
         'page callback' => 'contacts_update_duplicates',
         'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_CALLBACK,
         'weight' => 4,
         'menu_name' => 'main-menu',
@@ -79,7 +79,7 @@ function contacts_menu() {
         'description' => 'List, edit, or add contacts.',
         'page callback' => 'contacts_datatables_list',
         'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_CALLBACK,
         'weight' => 4,
         'menu_name' => 'main-menu',
@@ -91,7 +91,7 @@ function contacts_menu() {
         'description' => 'List, edit, or add organizations.',
         'page callback' => 'organizations_datatables_list',
         'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_CALLBACK,
         'weight' => 4,
         'menu_name' => 'main-menu',
@@ -104,7 +104,7 @@ function contacts_menu() {
         'page callback' => 'contacts_add',
         'page arguments' => array('contact'),
         'access arguments' => array('create contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_DEFAULT_LOCAL_TASK,
         'file' => 'cms_contacts.pages.inc',
     );
@@ -115,7 +115,7 @@ function contacts_menu() {
         'page callback' => 'contacts_add',
         'page arguments' => array('organization'),
         'access arguments' => array('create contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_DEFAULT_LOCAL_TASK,
         'file' => 'cms_contacts.pages.inc',
     );
@@ -125,7 +125,7 @@ function contacts_menu() {
         'description' => 'Export contacts',
         'page callback' => 'contacts_export',
         'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'file' => 'cms_contacts.pages.inc',
     );
 
@@ -135,7 +135,7 @@ function contacts_menu() {
         'page callback' => 'contacts_view',
         'page arguments' => array(2, 3),
         'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'file' => 'cms_contacts.pages.inc',
     );
 
@@ -145,7 +145,7 @@ function contacts_menu() {
         'page callback' => 'contacts_edit',
         'page arguments' => array(2, 3),
         'access arguments' => array('create contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
         'file' => 'cms_contacts.pages.inc',
@@ -157,7 +157,7 @@ function contacts_menu() {
         'page callback' => 'drupal_get_form',
         'page arguments' => array('contacts_delete_confirm', 2, 3),
         'access arguments' => array('create contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_INLINE,
         'file' => 'cms_contacts.pages.inc',
@@ -169,7 +169,7 @@ function contacts_menu() {
         'page callback' => 'organization_view',
         'page arguments' => array(2, 3),
         'access arguments' => array('view contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'file' => 'cms_contacts.pages.inc',
     );
 
@@ -179,7 +179,7 @@ function contacts_menu() {
         'page callback' => 'organization_edit',
         'page arguments' => array(2, 3),
         'access arguments' => array('create contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
         'file' => 'cms_contacts.pages.inc',
@@ -191,7 +191,7 @@ function contacts_menu() {
         'page callback' => 'drupal_get_form',
         'page arguments' => array('organization_delete_confirm', 2, 3),
         'access arguments' => array('create contacts content'),
-        'access callback' => 'contacts_access',
+        'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
         'context' => MENU_CONTEXT_INLINE,
         'file' => 'cms_contacts.pages.inc',

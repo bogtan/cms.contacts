@@ -3,7 +3,7 @@
 /**
  * Generate the node add/edit form array.
  */
-function contacts_form($form, &$form_state, $contact) {
+function cms_contacts_form($form, &$form_state, $contact) {
     global $user;
 
     if (!isset($form_state['contact'])) {
@@ -35,7 +35,7 @@ function contacts_form($form, &$form_state, $contact) {
       '#type' => 'submit',
       '#value' => t('Save'),
       '#weight' => 5,
-      '#submit' => array('contacts_form_submit'),
+      '#submit' => array('cms_contacts_form_submit'),
     );
 
     if (!empty($contact['uid'])) {
@@ -43,11 +43,11 @@ function contacts_form($form, &$form_state, $contact) {
             '#type' => 'submit',
             '#value' => t('Delete'),
             '#weight' => 15,
-            '#submit' => array('contacts_form_delete_submit'),
+            '#submit' => array('cms_contacts_form_delete_submit'),
         );
     }
 
-    $form['#validate'][] = 'contacts_form_validate';
+    $form['#validate'][] = 'cms_contacts_form_validate';
 
     $form['availability'] = array(
         '#type' => 'radios',

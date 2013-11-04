@@ -5,7 +5,7 @@ define('CONTACTS_TAXONOMY_CACHE_FILENAME', 'taxonomy.json');
 /**
  * Implementation of hook_cron_queue_info()
  */
-function contacts_cron_queue_info() {
+function cms_contacts_cron_queue_info() {
     $websites = CMSUtils::get_all_websites();
     $queues = array();
     foreach ($websites as $website_id => $website) {
@@ -21,7 +21,7 @@ function contacts_cron_queue_info() {
 /**
  * Implementation of hook_cron()
  */
-function contacts_cron() {
+function cms_contacts_cron() {
     $websites = CMSUtils::get_all_websites();
 
     // Put everything in a queue for processing.
