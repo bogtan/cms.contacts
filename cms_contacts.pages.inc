@@ -1,9 +1,9 @@
 <?php
 
-module_load_include('inc', 'contacts', 'contacts.forms');
-module_load_include('inc', 'contacts', 'contacts.api');
-module_load_include('inc', 'species', 'species.api');
-module_load_include('inc', 'meeting', 'meeting.api');
+module_load_include('inc', 'cms_contacts', 'cms_contacts.forms');
+module_load_include('inc', 'cms_contacts', 'cms_contacts.api');
+module_load_include('inc', 'cms_species', 'cms_species.api');
+module_load_include('inc', 'cms_meeting', 'cms_meeting.api');
 
 define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));

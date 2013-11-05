@@ -8,9 +8,9 @@ define('VOC_CONTACTS_MAILING', 'contacts_mailing');
 define('VOC_STATUS_PERSON', 'contacts_status_person');
 
 module_load_include('php', 'cms', 'CMSLDAP');
-module_load_include('menu', 'contacts', 'contacts');
-module_load_include('cron', 'contacts', 'contacts');
-module_load_include('inc', 'contacts', 'contacts.api');
+module_load_include('menu', 'cms_contacts', 'cms_contacts');
+module_load_include('cron', 'cms_contacts', 'cms_contacts');
+module_load_include('inc', 'cms_contacts', 'cms_contacts.api');
 
 /**
  * Implements hook_permission().
