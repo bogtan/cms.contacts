@@ -80,33 +80,33 @@ function contacts_list() {
     drupal_set_breadcrumb($breadcrumb);
 
     return theme('contacts_list', array(
-        'page' => $page,
-        'per_page' => $per_page,
-        'per_page_options' => $per_page_options,
-        'operator' => $operator,
-        'per_field_operator' => $per_field_operator,
-        'instrument' => $selected_instruments,
-        'countries' => $countries,
-        'instruments' => $mapped_instruments,
-        'regions' => $regions,
-        'mailing_list' => $mailing_list,
-        'availability' => $availability,
-        'person_status' => $person_status,
-        'organization_status' => $organization_status,
-        'species_options' => $species_options,
-        'meeting_options' => $meeting_options,
-        'region_options' => $region_options,
-        'mailing_options' => $mailing_options,
-        'org_status_options' => $org_status_options,
-        'person_status_options' => $person_status_options,
-        'meeting' => $meeting,
-        'species' => $species,
-    ));
+                                       'page' => $page,
+                                       'per_page' => $per_page,
+                                       'per_page_options' => $per_page_options,
+                                       'operator' => $operator,
+                                       'per_field_operator' => $per_field_operator,
+                                       'instrument' => $selected_instruments,
+                                       'countries' => $countries,
+                                       'instruments' => $mapped_instruments,
+                                       'regions' => $regions,
+                                       'mailing_list' => $mailing_list,
+                                       'availability' => $availability,
+                                       'person_status' => $person_status,
+                                       'organization_status' => $organization_status,
+                                       'species_options' => $species_options,
+                                       'meeting_options' => $meeting_options,
+                                       'region_options' => $region_options,
+                                       'mailing_options' => $mailing_options,
+                                       'org_status_options' => $org_status_options,
+                                       'person_status_options' => $person_status_options,
+                                       'meeting' => $meeting,
+                                       'species' => $species,
+                                  ));
 }
 
 /**
  * Callback function for Contacts dataTables serverside processing.
-*/
+ */
 function contacts_datatables_list() {
     if (!CMSUtils::request_is_ajax()) {
         drupal_not_found();
@@ -115,7 +115,7 @@ function contacts_datatables_list() {
 
     /**
      * Map LDAP attributes for filtering
-    */
+     */
     $columns = array(
         'uid',
         'givenname',
@@ -181,7 +181,7 @@ function contacts_datatables_list() {
 
     /**
      * Connect to LDAP server
-    */
+     */
     $users = array();
     $agent = CMSContacts::agent();
     if (!$agent->connected) {
@@ -191,12 +191,12 @@ function contacts_datatables_list() {
 
         /**
          * Search LDAP records based on filter
-        */
+         */
         $result = $agent->search($agent->people_dn, $filter);
 
         /**
          * Sort LDAP search results
-        */
+         */
         if (isset($_GET['iSortCol_0'])) {
             $result = $agent->sort($columns[$_GET['iSortCol_0']]);
         }
@@ -207,7 +207,7 @@ function contacts_datatables_list() {
         /**
          * Remove 'count' element from users results;
          * If sort direction is descending we don't want to include 'count' too
-        */
+         */
         unset($all_users['count']);
 
         if (isset($_GET['sSortDir_0']) && ($_GET['sSortDir_0'] == 'desc')) {
@@ -216,7 +216,7 @@ function contacts_datatables_list() {
 
         /**
          * Page search results
-        */
+         */
         $paged_entries = array_chunk($all_users, $per_page);
         $users = $paged_entries[$page - 1];
         $total_pages = ceil($total_entries / $per_page);
@@ -224,7 +224,7 @@ function contacts_datatables_list() {
 
     /**
      * Build data for dataTables
-    */
+     */
     $aaData = array();
     foreach ($users as $index => $user) {
         $aaData[$index] = array(
@@ -321,11 +321,11 @@ function contacts_datatables_list() {
 
 /**
  * Callback function for Contacts dataTables serverside processing.
-*/
+ */
 function organizations_datatables_list() {
     /**
      * Map LDAP attributes for filtering
-    */
+     */
     $columns = array(
         'oid',
         'o',
@@ -378,7 +378,7 @@ function organizations_datatables_list() {
 
     /**
      * Connect to LDAP server
-    */
+     */
     $agent = CMSContacts::agent();
     if (!$agent->connected) {
         drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
@@ -387,12 +387,12 @@ function organizations_datatables_list() {
 
         /**
          * Search LDAP records based on filter
-        */
+         */
         $result = $agent->search($agent->organization_dn, $filter);
 
         /**
          * Sort LDAP search results
-        */
+         */
         if (isset($_GET['iSortCol_0'])) {
             $result = $agent->sort($columns[$_GET['iSortCol_0']]);
         }
@@ -403,7 +403,7 @@ function organizations_datatables_list() {
         /**
          * Remove 'count' element from users results;
          * If sort direction is descending we don't want to include 'count' too
-        */
+         */
         unset($all_organizations['count']);
 
         if (isset($_GET['sSortDir_0']) && ($_GET['sSortDir_0'] == 'desc')) {
@@ -412,7 +412,7 @@ function organizations_datatables_list() {
 
         /**
          * Page search results
-        */
+         */
         $paged_entries = array_chunk($all_organizations, $per_page);
         $organizations = $paged_entries[$page - 1];
         $total_pages = ceil($total_entries / $per_page);
@@ -420,7 +420,7 @@ function organizations_datatables_list() {
 
     /**
      * Build data for dataTables
-    */
+     */
     $aaData = array();
     foreach ($organizations as $index => $organization) {
         $aaData[$index] = array(
@@ -560,39 +560,39 @@ function organizations_list() {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
     drupal_set_breadcrumb($breadcrumb);
 
     return theme('contacts_organizations_list', array(
-        'page' => $page,
-        'per_page' => $per_page,
-        'per_page_options' => $per_page_options,
-        'operator' => $operator,
-        'per_field_operator' => $per_field_operator,
-        'instrument' => $selected_instruments,
-        'countries' => $countries,
-        'instruments' => $mapped_instruments,
-        'regions' => $regions,
-        'mailing_list' => $mailing_list,
-        'availability' => $availability,
-        'person_status' => $person_status,
-        'organization_status' => $organization_status,
-        'species_options' => $species_options,
-        'meeting_options' => $meeting_options,
-        'region_options' => $region_options,
-        'mailing_options' => $mailing_options,
-        'org_status_options' => $org_status_options,
-        'person_status_options' => $person_status_options,
-        'meeting' => $meeting,
-        'species' => $species,
-    ));
+                                                     'page' => $page,
+                                                     'per_page' => $per_page,
+                                                     'per_page_options' => $per_page_options,
+                                                     'operator' => $operator,
+                                                     'per_field_operator' => $per_field_operator,
+                                                     'instrument' => $selected_instruments,
+                                                     'countries' => $countries,
+                                                     'instruments' => $mapped_instruments,
+                                                     'regions' => $regions,
+                                                     'mailing_list' => $mailing_list,
+                                                     'availability' => $availability,
+                                                     'person_status' => $person_status,
+                                                     'organization_status' => $organization_status,
+                                                     'species_options' => $species_options,
+                                                     'meeting_options' => $meeting_options,
+                                                     'region_options' => $region_options,
+                                                     'mailing_options' => $mailing_options,
+                                                     'org_status_options' => $org_status_options,
+                                                     'person_status_options' => $person_status_options,
+                                                     'meeting' => $meeting,
+                                                     'species' => $species,
+                                                ));
 }
 
 /**
  * Callback function for menu item
  *
  * Exported listed contacts to CSV format
-*/
+ */
 function contacts_export() {
     $columns = array(
         'uid',
@@ -657,7 +657,7 @@ function contacts_export() {
 
     /**
      * Connect to LDAP server
-    */
+     */
     $agent = CMSContacts::agent();
     if (!$agent->connected) {
         drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
@@ -666,7 +666,7 @@ function contacts_export() {
 
         /**
          * Search LDAP records based on filter
-        */
+         */
         $result = $agent->search($agent->people_dn, $filter);
         if (isset($_GET['iSortCol_0'])) {
             $result = $agent->sort($columns[$_GET['iSortCol_0']]);
@@ -689,12 +689,12 @@ function contacts_export() {
 
         /**
          * Add BOM_UTF-8 header
-        */
+         */
         fputs($fp, $bom =( chr(0xEF) . chr(0xBB) . chr(0xBF) ));
 
         /**
          * CSV file headers
-        */
+         */
         $headers = array(
             //'ID',
             //'UID',
@@ -789,7 +789,7 @@ function contacts_export() {
  * Callback function for menu item.
  *
  * Show contact details of a specified UID
-*/
+ */
 function contacts_view($contact_id, $group) {
     $current_profile = CMSUtils::get_current_profile();
 
@@ -809,7 +809,7 @@ function contacts_view($contact_id, $group) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
     drupal_set_breadcrumb($breadcrumb);
 
     $contact['instrument'] = $group;
@@ -817,8 +817,8 @@ function contacts_view($contact_id, $group) {
     $contact['meetings'] = CMSContacts::get_contact_related_content($contact_id, 'meeting', 'field_meeting_participants');
 
     return theme('contacts_view', array(
-        'user' => $contact,
-    ));
+                                       'user' => $contact,
+                                  ));
 }
 
 
@@ -827,7 +827,7 @@ function contacts_view($contact_id, $group) {
  * Callback function for menu item.
  *
  * Show organization details of a specified OID
-*/
+ */
 function organization_view($organization_id, $group) {
     $current_profile = CMSUtils::get_current_profile();
 
@@ -847,18 +847,18 @@ function organization_view($organization_id, $group) {
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
     $breadcrumb[] = l(t('Contacts'), 'contacts/listing');
-    $breadcrumb[] = l(t('Organizations'), 'contacts/organizations/listing');
+    $breadcrumb[] = l(t('Organizations'), ADMINISTRATION_PATH . 'contacts/organizations/listing');
     drupal_set_breadcrumb($breadcrumb);
 
     $organization['instrument'] = $group;
     return theme('contacts_organization_view', array(
-        'user' => $organization,
-    ));
+                                                    'user' => $organization,
+                                               ));
 }
 
 /**
  * Contacts add form validate handler
-*/
+ */
 function cms_contacts_form_validate($form, &$form_state) {
     $values = $form_state['values'];
     if (!empty($value['email']) && !valid_email_address($values['email'])) {
@@ -882,7 +882,7 @@ function cms_contacts_form_validate($form, &$form_state) {
 
 /**
  * Organization add form validate handler
-*/
+ */
 function organization_form_validate($form, &$form_state) {
     $values = $form_state['values'];
     if (!isset($values['name'])) {
@@ -897,7 +897,7 @@ function organization_form_validate($form, &$form_state) {
 
 /**
  * Contacts add form submit handler
-*/
+ */
 function cms_contacts_form_submit($form, &$form_state) {
     $agent = CMSContacts::agent();
     $edit = (isset($form['#contact']) && (!empty($form['#contact']))) ? TRUE : FALSE;
@@ -934,7 +934,7 @@ function cms_contacts_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -971,7 +971,7 @@ function cms_contacts_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -994,7 +994,7 @@ function cms_contacts_form_submit($form, &$form_state) {
 
 /**
  * Contacts add form submit handler
-*/
+ */
 function organization_form_submit($form, &$form_state) {
     $edit = (isset($form['#organization']) && (!empty($form['#organization']))) ? TRUE : FALSE;
     $organization_data = CMSContacts::prepare_organization_data($form_state['values'], $edit);
@@ -1022,7 +1022,7 @@ function organization_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -1041,7 +1041,7 @@ function organization_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -1064,20 +1064,20 @@ function organization_form_submit($form, &$form_state) {
 
 /**
  * Contacts add form
-*/
+ */
 function contacts_add($type) {
     drupal_set_title(t('Add new @name', array('@name' => $type)), PASS_THROUGH);
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
 
     drupal_set_breadcrumb($breadcrumb);
 
     switch($type) {
         case 'contact':
             return drupal_get_form('cms_contacts_form', array());
-            default;
+        default;
             break;
 
         case 'organization':
@@ -1088,7 +1088,7 @@ function contacts_add($type) {
 
 /**
  * Contacts edit form
-*/
+ */
 function contacts_edit($contact_id, $group) {
     $current_profile = CMSUtils::get_current_profile();
     if ($current_profile != 'cms') {
@@ -1106,7 +1106,7 @@ function contacts_edit($contact_id, $group) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
     $breadcrumb[] = l($contact['givenname'][0] . ' ' . $contact['sn'][0], 'contacts/item/' . $contact_id . '/' . $group . '/view');
 
     drupal_set_breadcrumb($breadcrumb);
@@ -1119,7 +1119,7 @@ function contacts_edit($contact_id, $group) {
 
 /**
  * Organizations edit form
-*/
+ */
 function organization_edit($organization_id, $group) {
     $current_profile = CMSUtils::get_current_profile();
     if ($current_profile != 'cms') {
@@ -1137,8 +1137,8 @@ function organization_edit($organization_id, $group) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), 'contacts/listing');
-    $breadcrumb[] = l(t('Organizations'), 'contacts/organizations/listing');
+    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
+    $breadcrumb[] = l(t('Organizations'), ADMINISTRATION_PATH . 'contacts/organizations/listing');
     $breadcrumb[] = l(CMSUtils::character_limiter($organization['o'][0], 100), 'contacts/organization/' . $organization_id . '/' . $group . '/view');
 
     drupal_set_breadcrumb($breadcrumb);
@@ -1238,7 +1238,7 @@ function contacts_delete_confirm_submit($form, &$form_state) {
 
         /**
          * Delete user from all assigned groups
-        */
+         */
         if ($contact['conventions']['count']) {
             foreach ($contact['conventions'] as $index => $group_name) {
                 if (is_numeric($index)) {
@@ -1290,7 +1290,7 @@ function organization_delete_confirm_submit($form, &$form_state) {
  * Callback function for menu item.
  *
  * Read organization LDIFs and check if a user alreardy exists and update its conventions attribute
-*/
+ */
 function contacts_update_duplicates() {
     $profiles = array('aewa', 'cms', 'ascobans', 'eurobats');
 
@@ -1306,7 +1306,7 @@ function contacts_update_duplicates() {
                     if ($results['count'] == 1) {
                         /**
                          * Check if user already has assigned the instrument
-                        */
+                         */
                         $exists = (in_array($profile, array_values($results[0]['conventions']))) ? TRUE : FALSE;
                         if (!$exists) {
                             $user_dn = "uid=" . $user->uid . ",ou=Users,o=CMS";
@@ -1373,7 +1373,7 @@ function build_terms_options($vocabularies = array(), $existing_options = array(
  *
  * @param   string   $profile   Convention to look for
  * @return  strgin   $filter
-*/
+ */
 function _build_contacts_filter($objectClass = 'cmsContact') {
     $selected_operator = (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of';
     $selected_per_field_operator = (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of';
