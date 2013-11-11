@@ -4,15 +4,15 @@
  * Implements hook_menu_alter().
 */
 function cms_contacts_menu_alter(&$items) {
-    $items['manage/contacts/listing']['page callback'] = 'contacts_list';
-    $items['manage/contacts/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
-    $items['manage/contacts/listing']['access arguments'] = array('view contacts content');
-    $items['manage/contacts/listing']['access callback'] = 'cms_contacts_access';
+    $items[ADMINISTRATION_PATH . 'contacts/listing']['page callback'] = 'contacts_list';
+    $items[ADMINISTRATION_PATH . 'contacts/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
+    $items[ADMINISTRATION_PATH . 'contacts/listing']['access arguments'] = array('view contacts content');
+    $items[ADMINISTRATION_PATH . 'contacts/listing']['access callback'] = 'cms_contacts_access';
 
-    $items['manage/contacts/organizations/listing']['page callback'] = 'organizations_list';
-    $items['manage/contacts/organizations/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
-    $items['manage/contacts/organizations/listing']['access arguments'] = array('view contacts content');
-    $items['manage/contacts/organizations/listing']['access callback'] = 'cms_contacts_access';
+    $items[ADMINISTRATION_PATH . 'contacts/organizations/listing']['page callback'] = 'organizations_list';
+    $items[ADMINISTRATION_PATH . 'contacts/organizations/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
+    $items[ADMINISTRATION_PATH . 'contacts/organizations/listing']['access arguments'] = array('view contacts content');
+    $items[ADMINISTRATION_PATH . 'contacts/organizations/listing']['access callback'] = 'cms_contacts_access';
 }
 
 /**
@@ -42,7 +42,7 @@ function cms_contacts_menu() {
     );
 
 
-    #$items['manage/contacts/listing'] = array(
+    #$items[ADMINISTRATION_PATH . 'contacts/listing'] = array(
     #    'title' => 'Contacts',
     #    'description' => 'List, edit, or add contacts.',
     #    'page callback' => 'contacts_list',
@@ -53,7 +53,7 @@ function cms_contacts_menu() {
     #    'file' => 'cms_contacts.pages.inc',
     #);
     #
-    #$items['manage/contacts/organizations/listing'] = array(
+    #$items[ADMINISTRATION_PATH . 'contacts/organizations/listing'] = array(
     #    'title' => 'Organizations',
     #    'description' => 'List, edit, or add organizations.',
     #    'page callback' => 'organizations_list',
@@ -98,7 +98,7 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/add'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/add'] = array(
         'title' => 'Contacts',
         'description' => 'Add new contact',
         'page callback' => 'contacts_add',
@@ -109,7 +109,7 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/organizations/add'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/organizations/add'] = array(
         'title' => 'Organzations',
         'description' => 'Add new organization',
         'page callback' => 'contacts_add',
@@ -129,21 +129,21 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/item/%/%/view'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/item/%/%/view'] = array(
         'title' => 'Contacts',
         'description' => 'View contact details',
         'page callback' => 'contacts_view',
-        'page arguments' => array(2, 3),
+        'page arguments' => array(3, 4),
         'access arguments' => array('view contacts content'),
         'access callback' => 'cms_contacts_access',
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/item/%/%/edit'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/item/%/%/edit'] = array(
         'title' => 'Contacts',
         'description' => 'Edit contact details',
         'page callback' => 'contacts_edit',
-        'page arguments' => array(2, 3),
+        'page arguments' => array(3, 4),
         'access arguments' => array('create contacts content'),
         'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
@@ -151,11 +151,11 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/item/%/%/delete'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/item/%/%/delete'] = array(
         'title' => 'Delete',
         'description' => 'Delete contact',
         'page callback' => 'drupal_get_form',
-        'page arguments' => array('contacts_delete_confirm', 2, 3),
+        'page arguments' => array('contacts_delete_confirm', 3, 4),
         'access arguments' => array('create contacts content'),
         'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
@@ -163,21 +163,21 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/organization/%/%/view'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/organization/%/%/view'] = array(
         'title' => 'Contacts',
         'description' => 'View organization details',
         'page callback' => 'organization_view',
-        'page arguments' => array(2, 3),
+        'page arguments' => array(3, 4),
         'access arguments' => array('view contacts content'),
         'access callback' => 'cms_contacts_access',
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/organization/%/%/edit'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/organization/%/%/edit'] = array(
         'title' => 'Contacts',
         'description' => 'Edit organization details',
         'page callback' => 'organization_edit',
-        'page arguments' => array(2, 3),
+        'page arguments' => array(3, 4),
         'access arguments' => array('create contacts content'),
         'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
@@ -185,11 +185,11 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items['contacts/organization/%/%/delete'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/organization/%/%/delete'] = array(
         'title' => 'Delete',
         'description' => 'Delete organization',
         'page callback' => 'drupal_get_form',
-        'page arguments' => array('organization_delete_confirm', 2, 3),
+        'page arguments' => array('organization_delete_confirm', 3, 4),
         'access arguments' => array('create contacts content'),
         'access callback' => 'cms_contacts_access',
         'type' => MENU_LOCAL_TASK,
