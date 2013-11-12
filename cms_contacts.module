@@ -14,7 +14,7 @@ module_load_include('inc', 'cms_contacts', 'cms_contacts.api');
 
 /**
  * Implements hook_permission().
-*/
+ */
 function cms_contacts_permission() {
     return array(
         'create contacts content' => array(
@@ -53,11 +53,11 @@ function cms_contacts_menu_link_alter(&$item) {
         $path = '<front>';
         $title = 'Contacts';
         $mlid = db_select('menu_links' , 'ml')
-                ->condition('ml.link_path' , $path)
-                ->condition('ml.link_title' , $title)
-                ->fields('ml' , array('mlid'))
-                ->execute()
-                ->fetchField();
+            ->condition('ml.link_path' , $path)
+            ->condition('ml.link_title' , $title)
+            ->fields('ml' , array('mlid'))
+            ->execute()
+            ->fetchField();
 
         $item['plid'] = $mlid;
     }
@@ -67,7 +67,7 @@ function cms_contacts_menu_link_alter(&$item) {
  * Implements hook_access().
  *
  * @todo Implement action logging;
-*/
+ */
 function cms_contacts_access($permission, $account = NULL) {
     global $user;
 
@@ -84,7 +84,7 @@ function cms_contacts_access($permission, $account = NULL) {
     // Use the advanced drupal_static() pattern, since this is called very often.
     static $drupal_static_fast;
     if (!isset($drupal_static_fast)) {
-      $drupal_static_fast['perm'] = &drupal_static(__FUNCTION__);
+        $drupal_static_fast['perm'] = &drupal_static(__FUNCTION__);
     }
 
     $perm = &$drupal_static_fast['perm'];
@@ -141,17 +141,17 @@ function cms_contacts_theme($existing, $type, $theme, $path) {
             'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
         ),
         'table__contacts_template_country' => $base + array(
-            'variables' => array(
-                'header' => NULL,
-                'rows' => NULL,
-                'attributes' => array(),
-                'caption' => NULL,
-                'colgroups' => array(),
-                'sticky' => TRUE,
-                'empty' => '',
-                'settings' => array()
+                'variables' => array(
+                    'header' => NULL,
+                    'rows' => NULL,
+                    'attributes' => array(),
+                    'caption' => NULL,
+                    'colgroups' => array(),
+                    'sticky' => TRUE,
+                    'empty' => '',
+                    'settings' => array()
+                )
             )
-        )
     );
 }
 
@@ -311,9 +311,7 @@ class CMSContacts extends CMSBase {
      */
 
     public static function agent() {
-        $file =  drupal_get_path('module', 'cms_contacts') . '/local.ldap.config.json';
-        $config = CMSUtils::read_json($file, TRUE);
-        return new CMSLDAP($config);
+        return new CMSLDAP();
     }
 
     public static function search_user($user_id, $agent) {
@@ -380,7 +378,7 @@ class CMSContacts extends CMSBase {
      *
      * @param   string   $dn
      * @return  string
-    */
+     */
     public static function user_id_from_dn($dn = '') {
         $pattern = '/^uid\=[a-z]*/';
         preg_match($pattern, $dn, $matches);
@@ -399,7 +397,7 @@ class CMSContacts extends CMSBase {
      * @param   boolean $edit
      *
      * @return array    $department_data
-    */
+     */
     public static function prepare_ldap_data($data = array(), $type = '', $edit = FALSE) {
         $ldap_data = array();
 
@@ -408,7 +406,7 @@ class CMSContacts extends CMSBase {
                 $ldap_data = CMSContacts::prepare_user_data($data, $edit);
 
                 break;
-                default;
+            default;
             case 'cmsOrganization':
                 $ldap_data = CMSContacts::prepare_organization_data($data, $edit);
 
@@ -427,7 +425,7 @@ class CMSContacts extends CMSBase {
      * @param   array   $data
      *
      * @return  array   $data
-    */
+     */
     public static function clean_ldap_data(&$data, $edit = FALSE) {
         foreach($data as $key => $value){
             if ($key == 'cmsAvailability') {
@@ -463,7 +461,7 @@ class CMSContacts extends CMSBase {
      * @param   boolean $edit
      *
      * @return array    $ldap_data
-    */
+     */
     public static function prepare_user_data($data = array(), $edit = FALSE) {
         global $user;
         date_default_timezone_set("Europe/Berlin");
@@ -556,7 +554,7 @@ class CMSContacts extends CMSBase {
      * @param   boolean $edit
      *
      * @return  array   $organization_data
-    */
+     */
     public static function prepare_organization_data($data = array(), $edit = FALSE) {
         global $user;
 
@@ -626,7 +624,7 @@ class CMSContacts extends CMSBase {
      * @param   boolean $edit
      *
      * @return  array   $ldap_data
-    */
+     */
     public static function prepare_department_data($data = array(), $edit = FALSE) {
         $ldap_data = array(
             'objectclass' => array(
@@ -665,7 +663,7 @@ class CMSContacts extends CMSBase {
      * @param   string  $attribute
      *
      * @return  boolean
-    */
+     */
     public static function prepare_user_to_csv(&$data, $user, $attribute) {
         if ((!isset($user[$attribute])) || (empty($user[$attribute]))) {
             if ($attribute == 'mail') {
@@ -732,7 +730,7 @@ class CMSContacts extends CMSBase {
      * @param   array    $conventions
      *
      * @return  array    $organization
-    */
+     */
     public static function get_or_create_organization($organization_name = '', $conventions = array()) {
         $conventions = array_combine($conventions, $conventions);
         $organization = array();
@@ -767,7 +765,7 @@ class CMSContacts extends CMSBase {
      * @param   array    $conventions
      *
      * @return  $array   $department
-    */
+     */
     public static function get_or_create_department($department_name = '', $conventions = array()) {
         $conventions = array_combine($conventions, $conventions);
         $department = array();
@@ -803,7 +801,7 @@ class CMSContacts extends CMSBase {
      * @param   array   $terms   An associative array of terms IDs and terms names for the specified attribute
      *
      * @return  array   $contact_terms
-    */
+     */
     public static function contact_map_terms($contact = array(), $attribute = '', $terms = array()) {
         $contact_terms = array();
         if (isset($contact[$attribute]) && (isset($contact[$attribute]['count'])) && ($contact[$attribute]['count'])) {
@@ -828,7 +826,7 @@ class CMSContacts extends CMSBase {
      * @param   array    $tids   IDs of terms for which to get the names
      *
      * return   array   $contact_terms   List of terms names
-    */
+     */
     public static function contact_map_terms_by_ids($vocabulary_name = '', $tids = array()) {
         $contact_terms = array();
 
@@ -879,9 +877,9 @@ class CMSContacts extends CMSBase {
         $related_nodes = array();
         $query = new EntityFieldQuery();
         $query = $query->entityCondition('entity_type', 'node')
-                ->propertyCondition('type', $content_type)
-                ->fieldCondition($field, 'value', $uid, '=')
-                ->execute();
+            ->propertyCondition('type', $content_type)
+            ->fieldCondition($field, 'value', $uid, '=')
+            ->execute();
         if(isset($query['node']) && !empty($query['node'])) {
             foreach ($query['node'] as $nid => $node_details) {
                 $node = node_load($nid);
@@ -905,7 +903,7 @@ class CMSContacts extends CMSBase {
      * @param   array    $nids  IDs of Drupal nodes for which to set the LDAP contact
      * @param   string   $content_type   Drupal node type
      * @param   string   $fields   Drupal node's field on which to save the relation with the LDAP contact
-    */
+     */
     public static function set_contact_related_content($uid = '', $nids = array(), $content_type = '', $field = '') {
         $existing_content = CMSContacts::get_contact_related_content($uid, $content_type, $field);
         foreach ($existing_content as $node) {
