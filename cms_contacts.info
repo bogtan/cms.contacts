@@ -2,7 +2,7 @@ name = "CMS Contacts"
 description = "CMS contacts module."
 package = CMS
 core = 7.x
-version = 7.x-1.0-beta1
+version = 7.x-1.0
 project = cms_contacts
 
 dependencies[] = views
