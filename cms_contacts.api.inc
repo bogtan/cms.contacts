@@ -1,14 +1,17 @@
 <?php
 
 /**
- * Menu callback for contacts
+ * Menu callback for /contact/list/terms
  *
- * Create an associative array with terms IDs and name
+ * List contacts related taxonomy terms from cache
+ *
+ * @param   string   $website
+ *    Website for which to retrieve the taxonomy terms from cache
+ * @return  array    $response
 */
 function contacts_list_vocabulary_terms_from_cache($website) {
     global $user;
     $response = array();
-    $vocabularies = array();
 
     $websites = CMSUtils::get_all_websites();
     if (array_key_exists($website, $websites)) {
@@ -22,6 +25,17 @@ function contacts_list_vocabulary_terms_from_cache($website) {
 
 /**
  * Menu callback for api/contacts/terms
+ *
+ * List all contacts related taxonomy terms
+ * (Mailing lists, Regions, Status person, Status organization)
+ *
+ * @param   string   $profile
+ *    Website from which to retrieve the taxonomy terms from the local cache.
+ *    Used to build the relative path to the local cache.
+ * @param   string   $type
+ *    Get taxonomy terms from cache or directly from the database.
+ *    The database retrieve method is used in order to save taxonomy terms in local cache.
+ * @return  string   JSON response
 */
 function api_contacts_list_terms($profile = '', $type = '') {
     if (empty($profile)) {
@@ -45,8 +59,16 @@ function api_contacts_list_terms($profile = '', $type = '') {
     }
 }
 
+/**
+ * Menu callback for /search_contact
+ * Contacts API search function
+ *
+ * Search contacts that contain a given string in their CN (canonical name)
+ *
+ * @param   string   $string
+ * @return  strgin   JSON response
+*/
 function contacts_search($string = '') {
-    $contacts = array();
     if (empty($string)) {
         return '';
     }
