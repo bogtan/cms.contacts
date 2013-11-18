@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ *    Used to handle Contacts webservices
+*/
+
+/**
  * Menu callback for /contact/list/terms
  *
  * List contacts related taxonomy terms from cache
@@ -74,6 +79,6 @@ function contacts_search($string = '') {
     }
 
     $filter = "(cn=*$string*)";
-    $contacts = CMSContacts::get_contacts($filter, TRUE);
+    $contacts = CMSContacts::get_mapped_contacts_names_uid($filter, TRUE);
     echo json_encode($contacts, JSON_PRETTY_PRINT);
 }

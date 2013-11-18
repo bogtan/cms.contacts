@@ -1,12 +1,26 @@
 <?php
 
+/**
+ * @file
+ *   Used to implement general hooks and define Contacts' specific custom functions
+*/
+
+/**
+ * Role to handle Contacts data
+*/
 define('ROLE_MANAGE_CONTACTS', 'manage contacts');
 
+/**
+ * Taxonomy vocabularies used only for Contacts data
+*/
 define('VOC_STATUS_ORGANIZATION', 'contacts_status_organization');
 define('VOC_CONTACTS_REGION', 'contacts_regions');
 define('VOC_CONTACTS_MAILING', 'contacts_mailing');
 define('VOC_STATUS_PERSON', 'contacts_status_person');
 
+/**
+ * Include files for accessing LDAP data and API functions
+*/
 module_load_include('php', 'cms', 'CMSLDAP');
 module_load_include('menu', 'cms_contacts', 'cms_contacts');
 module_load_include('cron', 'cms_contacts', 'cms_contacts');
@@ -14,6 +28,10 @@ module_load_include('inc', 'cms_contacts', 'cms_contacts.api');
 
 /**
  * Implements hook_permission().
+ *
+ * Define Contacts related permissions
+ *
+ * @return   array   Array of Contacts related permissions
  */
 function cms_contacts_permission() {
     return array(
@@ -43,30 +61,15 @@ function cms_contacts_permission() {
     );
 }
 
-function cms_contacts_menu_link_alter(&$item) {
-    $paths = array(
-        'contacts/listing',
-        'contacts/organizations/listing',
-    );
-
-    if (in_array($item['link_path'], $paths)) {
-        $path = '<front>';
-        $title = 'Contacts';
-        $mlid = db_select('menu_links' , 'ml')
-            ->condition('ml.link_path' , $path)
-            ->condition('ml.link_title' , $title)
-            ->fields('ml' , array('mlid'))
-            ->execute()
-            ->fetchField();
-
-        $item['plid'] = $mlid;
-    }
-}
-
 /**
  * Implements hook_access().
  *
+ * @param   string   $permission
+ * @param   stdClass $account
+ *
  * @todo Implement action logging;
+ *
+ * @return  boolean
  */
 function cms_contacts_access($permission, $account = NULL) {
     global $user;
@@ -75,6 +78,7 @@ function cms_contacts_access($permission, $account = NULL) {
         $account = $user;
     }
 
+    // Always allow access for 'admin' user
     if ($account->uid == 1) {
         return NODE_ACCESS_ALLOW;
     }
@@ -102,7 +106,16 @@ function cms_contacts_access($permission, $account = NULL) {
 }
 
 /**
- * Implementes hook_theme($existing, $type, $theme, $path)
+ * Implementes hook_theme();
+ *
+ * Define custom theme templates for Contacts
+ *
+ * @param   string   $existing
+ * @param   string   $type
+ * @param   stdClass $theme
+ * @param   string   $path
+ *
+ * @param   array
  */
 function cms_contacts_theme($existing, $type, $theme, $path) {
     $base = array(
@@ -237,10 +250,10 @@ function cms_contacts_node_load($nodes, $types) {
  * Utility methods specific to species.
  */
 class CMSContacts extends CMSBase {
-
     static $bundle_country_module = 'country';
     static $field_contacts_country = 'national_focal_points';
 
+    // Map Contacts form fields to LDAP cmsContact attributes
     private static $user_fields = array(
         'first_name' => 'givenName',
         'last_name' => 'sn',
@@ -270,6 +283,7 @@ class CMSContacts extends CMSBase {
         'additional_emails' => 'additionalEmails',
     );
 
+    // Map Organization form fields to LDAP cmsOrganization attributes
     private static $organization_fields = array(
         'name' => 'o',
         'department' => 'ou',
@@ -294,6 +308,7 @@ class CMSContacts extends CMSBase {
 
     );
 
+    // Map Department form fields to LDAP cmsDepartment attributes
     private static $department_fields = array(
         'name' => 'ou',
         'country' => 'iso2',
@@ -307,24 +322,52 @@ class CMSContacts extends CMSBase {
     );
 
     /**
-     * Connect to LDAP Server
+     * Connect to LDAP server and create new instance of LDAP agent
+     *
+     * @return   stdClass
      */
-
     public static function agent() {
         return new CMSLDAP();
     }
 
-    public static function search_user($user_id, $agent) {
-        $agent->search($agent->people_dn, "(uid=$user_id)");
+    /**
+     * Search the LDAP for a given uid
+     *
+     * @param   string   $uid
+     *    uid to search for
+     * @param   stdClass $agent
+     *    LDAP agent to handle the search bind and the retrieved results
+     *
+     * @return  array
+    */
+    public static function search_user($uid, $agent) {
+        $agent->search($agent->people_dn, "(uid=$uid)");
         return $agent->get_entries();
     }
 
+    /**
+     * Check if a specified LDAP group already exists
+     *
+     * @param   string   $group_name
+     * @param   stdClass $agent
+     *
+     * @return  boolean
+    */
     public static function group_exists($group_name, $agent) {
         $agent->search($agent->people_dn, "(cn=$group_name)");
         $total = $agent->count_entries();
         return ($total) ? TRUE : FALSE;
     }
 
+    /**
+     * Check if a given user exists in a specified group
+     *
+     * @param   string   $group_name
+     * @param   array    $user
+     * @param   stdClass $agent
+     *
+     * @return  boolean
+     */
     public static function user_in_group($group_name, $user, $agent) {
         if (isset($user['conventions']) && isset($user['conventions']['count'])) {
             unset($user['conventions']['count']);
@@ -336,6 +379,15 @@ class CMSContacts extends CMSBase {
         return FALSE;
     }
 
+    /**
+     * Check if a given organization exists in a specified group
+     *
+     * @param   string   $group_name
+     * @param   array    $organization
+     * @param   stdClass $agent
+     *
+     * @return  boolean
+    */
     public static function organization_in_group($group_name, $organization, $agent) {
         if (isset($organization['conventions']) && $organization['conventions']['count']) {
             unset($organization['conventions']['count']);
@@ -347,6 +399,13 @@ class CMSContacts extends CMSBase {
         return FALSE;
     }
 
+    /**
+     * Assign a given user to specified groups
+     *
+     * @param   string   $user_id
+     * @param   array    $groups
+     * @param   stdClass $agent
+    */
     public static function update_user_groups($user_id, $groups = array(), $agent) {
         $instruments = array_keys(CMSLegalInstrument::get_mapped_instruments(TRUE));
         $existing_groups = array_keys(CMSUtils::get_all_websites());
@@ -359,6 +418,14 @@ class CMSContacts extends CMSBase {
         }
     }
 
+    /**
+     * Generate LDAP uid attribute' value based on user's first name and last name
+     *
+     * @param   string   $first_name
+     * @param   string   $last_name
+     *
+     * @return  string
+     */
     public static function generate_user_id($first_name = '', $last_name = '') {
         $first_name = CMSUtils::alphanumeric($first_name);
         $last_name = CMSUtils::alphanumeric($last_name);
@@ -374,7 +441,7 @@ class CMSContacts extends CMSBase {
     }
 
     /**
-     * Get user ID from dn
+     * Get User ID from DN
      *
      * @param   string   $dn
      * @return  string
@@ -391,12 +458,12 @@ class CMSContacts extends CMSBase {
     }
 
     /**
-     * Prepare department data for LDAp insertion
+     * Prepare Contacts' form data for LDAP insertion
      *
      * @param   array   $data
      * @param   boolean $edit
      *
-     * @return array    $department_data
+     * @return  array   $department_data
      */
     public static function prepare_ldap_data($data = array(), $type = '', $edit = FALSE) {
         $ldap_data = array();
@@ -420,7 +487,7 @@ class CMSContacts extends CMSBase {
     }
 
     /**
-     * Remove empty values from LDAP data to avoid "Invalid syntax" error
+     * Remove empty values from LDAP data in order to avoid "Invalid syntax" LDAP error
      *
      * @param   array   $data
      *
@@ -455,17 +522,21 @@ class CMSContacts extends CMSBase {
     }
 
     /**
-     * Prepare user data for LDAp insertion
+     * Prepare user data for LDAP insertion
      *
      * @param   array   $data
      * @param   boolean $edit
+     *    If $edit is TRUE there is no need to generate another uid
      *
      * @return array    $ldap_data
+     *
+     * @todo   Timezone should have a customizable value
      */
     public static function prepare_user_data($data = array(), $edit = FALSE) {
         global $user;
         date_default_timezone_set("Europe/Berlin");
 
+        // Manually set attributes that are not coming from the Contacts' add/edit form
         $ldap_data = array(
             'objectclass' => array(
                 'top',
@@ -479,6 +550,7 @@ class CMSContacts extends CMSBase {
             ),
         );
 
+        // Manually manipulate different cases for LDAP attributes
         foreach (CMSContacts::$user_fields as $field => $ldap_field) {
             if (isset($data[$field]) && (!empty($data[$field]))) {
                 if ($field == 'conventions') {
@@ -515,8 +587,8 @@ class CMSContacts extends CMSBase {
         }
 
         $ldap_data['cmsAvailability'][0] = (isset($data['availability']) && ($data['availability'] != 'FALSE')) ? 'TRUE' : 'FALSE';
-
         $ldap_data['cn'][0] = $data['first_name'] . ' ' . $data['last_name'];
+
         CMSContacts::set_multiple_attribute($ldap_data, $data, 'email', 'mail');
         CMSContacts::set_multiple_attribute($ldap_data, $data, 'additional_emails', CMSContacts::$user_fields['additional_emails']);
         CMSContacts::set_multiple_attribute($ldap_data, $data, 'website', CMSContacts::$user_fields['website']);
@@ -528,6 +600,7 @@ class CMSContacts extends CMSBase {
             $ldap_data['personalEmail'][] = $data['personal_email'];
         }
 
+        // Clean LDAP data before insertion
         CMSContacts::clean_ldap_data($ldap_data, $edit);
 
         if (!$edit) {
@@ -539,6 +612,16 @@ class CMSContacts extends CMSBase {
         return $ldap_data;
     }
 
+    /**
+     * Before insertion multiple valued attributes must be associative arrays
+     *
+     * @param   array   $ldap_data
+     * @param   array   $data
+     * @param   string  $field
+     *    Drupal Contacts' form field
+     * @param   string  $ldap_field
+     *    LDAP field name
+    */
     public static function prepare_multiple_valued_attribute(&$ldap_data, $data, $field, $ldap_field) {
         if (array_key_exists($field, $data) && (!empty($data[$field]))) {
             foreach($data[$field] as $value) {
@@ -796,9 +879,12 @@ class CMSContacts extends CMSBase {
     /**
      * Create a list of terms IDs of a specified list of terms names
      *
-     * @param   array   $contact   An array with contact details
-     * @param   string  $attribute Attribute name where names are stored on contact
-     * @param   array   $terms   An associative array of terms IDs and terms names for the specified attribute
+     * @param   array $contact
+     *    An array with contact details
+     * @param   string $attribute
+     *    Attribute name where names are stored on contact
+     * @param   array $terms
+     *    An associative array of terms IDs and terms names for the specified attribute
      *
      * @return  array   $contact_terms
      */
@@ -822,10 +908,13 @@ class CMSContacts extends CMSBase {
     /**
      * Given a vocabulary machine name and an array of terms IDs return a list with terms names
      *
-     * @param   string   $vocabulary_name   Vocabulary machine name where to look for specified terms IDs
-     * @param   array    $tids   IDs of terms for which to get the names
+     * @param   string $vocabulary_name
+     *    Vocabulary machine name where to look for specified terms IDs
+     * @param   array $tids
+     *    IDs of terms for which to get the names
      *
-     * return   array   $contact_terms   List of terms names
+     * return   array   $contact_terms
+     *    List of terms names
      */
     public static function contact_map_terms_by_ids($vocabulary_name = '', $tids = array()) {
         $contact_terms = array();
@@ -842,7 +931,20 @@ class CMSContacts extends CMSBase {
         return $contact_terms;
     }
 
-    public static function get_contacts($filter = '', $associative = FALSE) {
+    /**
+     * Retrieve all Contacts CN (Canonical Names) based on a specified filter
+     *
+     * @param   string   $filter
+     * @param   boolean  $associative
+     *    If $associative is TRUE then return an associative array with uid and name:
+     *    array(
+     *        'id' => '<uid>',
+     *        'name' => '<cn>',
+     *    )
+     *
+     * @return  array    $result
+    */
+    public static function get_mapped_contacts_names_uid($filter = '', $associative = FALSE) {
         $result = array();
         $agent = CMSContacts::agent();
 
@@ -873,6 +975,19 @@ class CMSContacts extends CMSBase {
         return $result;
     }
 
+    /**
+     * Get Drupal content related to a specified LDAP user
+     *
+     * @param   string   $uid
+     * @param   string   $content_type
+     *    Drupal content type to retrieve
+     * @param   string   $field
+     *    Drupal field on which the LDAP uid is held
+     * @param   boolean  $only_title
+     *    If $only_title is True do not return the whole Drupal $node details
+     *
+     * @return  array    $related_nodes
+    */
     public static function get_contact_related_content($uid = '', $content_type = '', $field = '', $only_title = FALSE) {
         $related_nodes = array();
         $query = new EntityFieldQuery();
@@ -938,10 +1053,22 @@ class CMSContacts extends CMSBase {
         }
     }
 
-    public static function set_multiple_attribute(&$ldap_data = array(), $data = array(), $attribute = '', $ldap_attribute = '') {
+    /**
+     * Manually handle multiple valued LDAP attributes on Contacts add/edit save
+     *
+     * @param   array   $ldap_data
+     *    Data to be saved in LDAP database
+     * @param   array   $data
+     *    Data retrieved from Drupal Contacts add/edit form
+     * @param   string  $field
+     *    Drupal Contacts add/edit form field name
+     * @param   string  $ldap_attribute
+     *    LDAP attribute on which the data will be saved
+    */
+    public static function set_multiple_attribute(&$ldap_data = array(), $data = array(), $field = '', $ldap_attribute = '') {
         $ldap_data[$ldap_attribute] = array();
-        if (isset($data[$attribute]) && (!empty($data[$attribute]))) {
-            $values = explode(',', $data[$attribute]);
+        if (isset($data[$field]) && (!empty($data[$field]))) {
+            $values = explode(',', $data[$field]);
             foreach ($values as $value) {
                 $value = trim($value);
                 if (!in_array($value, array_values($ldap_data[$ldap_attribute]))) {
@@ -951,6 +1078,15 @@ class CMSContacts extends CMSBase {
         }
     }
 
+    /**
+     * Create a string with values of a multiple valued LDAP attribute
+     *
+     * @param   string   $contact
+     *    LDAP contact data
+     * @param   string   $ldap_attribute
+     *
+     * @return  string   $value
+    */
     public static function get_multiple_attribute($contact = array(), $ldap_attribute = '') {
         $value = '';
         if (isset($contact[$ldap_attribute]) && $contact[$ldap_attribute]['count']) {

@@ -1,7 +1,16 @@
 <?php
 
 /**
+ * @file
+ *    Used to define Contacts' menu items
+*/
+
+/**
  * Implements hook_menu_alter().
+ *
+ * Alter callback functions and access arguments for Contacts administration related menu items
+ *
+ * @param   $array   $items
 */
 function cms_contacts_menu_alter(&$items) {
     $items[ADMINISTRATION_PATH . 'contacts/listing']['page callback'] = 'contacts_list';
@@ -17,6 +26,10 @@ function cms_contacts_menu_alter(&$items) {
 
 /**
  * Implements hook_menu().
+ *
+ * Define contacts related menu items
+ *
+ * @retur   array   $items
  */
 function cms_contacts_menu() {
     $items = array();
