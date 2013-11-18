@@ -21,14 +21,15 @@ function cms_contacts_menu_alter(&$items) {
 function cms_contacts_menu() {
     $items = array();
 
-    #$items['<front>'] = array(
-    #    'title' => 'Contacts',
-    #    'description' => 'List, edit, or add contacts.',
-    #    'type' => MENU_NORMAL_ITEM,
-    #    'weight' => 4,
-    #    'menu_name' => 'main-menu',
-    #    'expanded' => TRUE,
-    #);
+    $items['admin/config/system/cms_contacts'] = array(
+        'title' => 'CMS Contacts LDAP settings',
+        'description' => t('Configure LDAP server settings'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cms_contacts_admin'),
+        'access arguments' => array('administer contacts settings'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cms_contacts.admin.inc',
+    );
 
     $items['search_contact'] = array(
         'title' => 'Search for contacts',
@@ -40,27 +41,6 @@ function cms_contacts_menu() {
         'type' => MENU_CALLBACK,
         'file' => 'cms_contacts.api.inc',
     );
-
-
-    #$items[ADMINISTRATION_PATH . 'contacts/listing'] = array(
-    #    'title' => 'Contacts',
-    #    'description' => 'List, edit, or add contacts.',
-    #    'page callback' => 'contacts_list',
-    #    'access arguments' => array('view contacts content'),
-    #    'access callback' => 'cms_contacts_access',
-    #    'type' => MENU_NORMAL_ITEM,
-    #    'menu_name' => 'main-menu',
-    #    'file' => 'cms_contacts.pages.inc',
-    #);
-    #
-    #$items[ADMINISTRATION_PATH . 'contacts/organizations/listing'] = array(
-    #    'title' => 'Organizations',
-    #    'description' => 'List, edit, or add organizations.',
-    #    'page callback' => 'organizations_list',
-    #    'access arguments' => array('view contacts content'),
-    #    'access callback' => 'cms_contacts_access',
-    #    'file' => 'cms_contacts.pages.inc',
-    #);
 
     $items['contacts/update_duplicates'] = array(
         'title' => 'Contacts - Update duplicates',

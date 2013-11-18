@@ -5,6 +5,8 @@ core = 7.x
 version = 7.x-1.0
 project = cms_contacts
 
+configure = admin/config/system/cms_contacts
+
 dependencies[] = views
 dependencies[] = simpletest
 
