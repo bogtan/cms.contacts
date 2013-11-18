@@ -2,16 +2,20 @@
 
 /**
  * Implements hook_admin();
+ *
+ * Create CMS Contacts administration settings form.
+ * The form allows administrators to configure the LDAP server from the
+ * Drupal administration interface.
  */
 function cms_contacts_admin() {
     $form = array();
     $form[LDAP_ADDRESS] = array(
         '#type' => 'textfield',
         '#title' => t('LDAP Server address'),
+        '#description' => t('Server address (e.g. http://example.com/)'),
         '#default_value' => variable_get(LDAP_ADDRESS, ''),
         '#size' => 60,
         '#maxlength' => 255,
-        '#description' => t(""),
         '#required' => TRUE,
     );
 
@@ -83,4 +87,42 @@ function cms_contacts_admin() {
     );
 
     return system_settings_form($form);
+}
+
+/**
+ * Implements hook_admin_validate();
+ *
+ * Validate CMS Contacts administration settings.
+ *
+ * @param   array   $form
+ * @param   array   $form_state
+ */
+function cms_contacts_admin_validate($form, &$form_state) {
+    $values = $form_state['values'];
+
+    _cms_contacts_check_dn($values[LDAP_BIND_RDN], $base_dn, 'Bind RDN');
+    _cms_contacts_check_dn($values[LDAP_PEOPLE_DN], $base_dn, 'People DN');
+    _cms_contacts_check_dn($values[LDAP_ORGANIZATION_DN], $base_dn, 'Organization DN');
+    _cms_contacts_check_dn($values[LDAP_DEPARTMENT_DN], $base_dn, 'Department DN');
+}
+
+/**
+ * Check if a given DN (Distinguished name) is correct.
+ * The given DN must end with the Base DN.
+ *
+ * @param   string   $dn
+ *    The DN to check
+ * @param   string   $base_dn
+ *    The Base DN to match
+ * @param   string   $dn_name
+ *    Name of the DN parameter. Used to set form error.
+ *
+ * @return  boolean
+ */
+function _cms_contacts_check_dn($dn, $base_dn, $dn_name) {
+    $contains = CMSUtils::ends_with($dn, $base_dn);
+
+    if (!$contains) {
+        form_set_error('cms_contacts', t($dn_name . ' must be formed from Base DN'));
+    }
 }
