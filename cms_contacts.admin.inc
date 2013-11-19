@@ -100,6 +100,7 @@ function cms_contacts_admin() {
 function cms_contacts_admin_validate($form, &$form_state) {
     $values = $form_state['values'];
 
+    $base_dn = $values[LDAP_BASE_DN];
     _cms_contacts_check_dn($values[LDAP_BIND_RDN], $base_dn, 'Bind RDN');
     _cms_contacts_check_dn($values[LDAP_PEOPLE_DN], $base_dn, 'People DN');
     _cms_contacts_check_dn($values[LDAP_ORGANIZATION_DN], $base_dn, 'Organization DN');
