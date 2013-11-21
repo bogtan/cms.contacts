@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * @file
+ *    Handle listing of LDAP data, forms' validations and submissions, data export
+ *
+ * @author
+ *    Bogdan Tanase
+ */
+
 module_load_include('inc', 'cms_contacts', 'cms_contacts.forms');
 module_load_include('inc', 'cms_contacts', 'cms_contacts.api');
 module_load_include('inc', 'cms_species', 'cms_species.api');
@@ -9,104 +17,67 @@ define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));
 
 /**
- * Callback function for menu.
+ *
+ *
+ * @return   array
  */
 function contacts_list() {
-    $availability_statuses = array("TRUE", "FALSE", TRUE, FALSE);
-    $current_profile = CMSUtils::get_current_profile();
-    $users = array();
     $groups = CMSUtils::get_mapped_websites();
-    $websites = CMSUtils::get_all_websites();
     $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
-    $operator = (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of';
-    $per_field_operator = (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of';
-    $countries = isset($_GET['country']) ? $_GET['country'] : array();
-    $regions = isset($_GET['region']) ? $_GET['region'] : array();
-    $availability = (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "";
-    $mailing_list = isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array();
-    $person_status = isset($_GET['person_status']) ? $_GET['person_status'] : array();
-    $organization_status = isset($_GET['organization_status']) ? $_GET['organization_status'] : array();
-    $species = isset($_GET['species']) ? $_GET['species'] : '';
-    $meeting = isset($_GET['meeting']) ? $_GET['meeting'] : '';
-
-    $species_options = array();
-    $meeting_options = array();
-    $region_options = array();
-    $mailing_options = array();
-    $org_status_options = array();
-    $person_status_options = array();
-
-    if (empty($selected_instruments) || ($selected_instruments == 'null') || ($selected_instruments[0] == '')) {
-        foreach ($websites as $name => $website) {
-            $remote_species = api_species_list('species_from_cache', $name);
-            $species_options = array_merge($species_options, $remote_species);
-            $remote_meetings = api_meeting_list('cache', $name);
-            $meeting_options = array_merge($meeting_options, $remote_meetings);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $name, $website['title']);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $name, $website['title']);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $name, $website['title']);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $name, $website['title']);
-        }
-    }else {
-        foreach ($selected_instruments as $instrument) {
-            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
-            $species_options = api_species_list('species_from_cache', $instrument);
-            $meeting_options = api_meeting_list('cache', $instrument);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $instrument, $title);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $instrument, $title);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $instrument, $title);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $instrument, $title);
-        }
-    }
-
-    $instruments = array();
-    $mapped_instruments = array();
-    $page = (isset($_GET['page']) && (is_numeric($_GET['page']))) ? $_GET['page'] : 1;
     $per_page_options = array(10, 25, 50, 100);
-    $per_page = (isset($_GET['per_page']) && (is_numeric($_GET['per_page'])) && (in_array($_GET['per_page'], $per_page_options))) ? $_GET['per_page'] : 10;
-    $total_pages = 1;
-    $total_entries = 0;
 
+    $species_options = $meeting_options = $region_options = $mailing_options = $org_status_options = $person_status_options = array();
+
+    _build_exposed_form_options(
+        $selected_instruments,
+        $species_options,
+        $meeting_options,
+        $region_options,
+        $mailing_options,
+        $org_status_options,
+        $person_status_options
+    );
+
+    $mapped_instruments = array();
     foreach ($groups as $group => $title) {
         $mapped_instruments[CMSUtils::slug($group)] = $title;
     }
-
     $mapped_instruments = CMSLegalInstrument::cms_instruments_names();
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
     drupal_set_breadcrumb($breadcrumb);
 
+    drupal_set_title(t('Contacts'));
+
     return theme('contacts_list', array(
-        'page' => $page,
-        'per_page' => $per_page,
-        'per_page_options' => $per_page_options,
-        'operator' => $operator,
-        'per_field_operator' => $per_field_operator,
-        'instrument' => $selected_instruments,
-        'countries' => $countries,
-        'instruments' => $mapped_instruments,
-        'regions' => $regions,
-        'mailing_list' => $mailing_list,
-        'availability' => $availability,
-        'person_status' => $person_status,
-        'organization_status' => $organization_status,
-        'species_options' => $species_options,
-        'meeting_options' => $meeting_options,
-        'region_options' => $region_options,
-        'mailing_options' => $mailing_options,
-        'org_status_options' => $org_status_options,
-        'person_status_options' => $person_status_options,
-        'meeting' => $meeting,
-        'species' => $species,
-    ));
+                                       'page' => (isset($_GET['page']) && (is_numeric($_GET['page']))) ? $_GET['page'] : 1,
+                                       'per_page' => (isset($_GET['per_page']) && (is_numeric($_GET['per_page'])) && (in_array($_GET['per_page'], $per_page_options))) ? $_GET['per_page'] : 10,
+                                       'per_page_options' => $per_page_options,
+                                       'operator' => (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of',
+                                       'per_field_operator' => (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of',
+                                       'instrument' => $selected_instruments,
+                                       'countries' => isset($_GET['country']) ? $_GET['country'] : array(),
+                                       'instruments' => $mapped_instruments,
+                                       'regions' => isset($_GET['region']) ? $_GET['region'] : array(),
+                                       'mailing_list' => isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array(),
+                                       'availability' => (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "",
+                                       'person_status' => isset($_GET['person_status']) ? $_GET['person_status'] : array(),
+                                       'organization_status' => isset($_GET['organization_status']) ? $_GET['organization_status'] : array(),
+                                       'species_options' => $species_options,
+                                       'meeting_options' => $meeting_options,
+                                       'region_options' => $region_options,
+                                       'mailing_options' => $mailing_options,
+                                       'org_status_options' => $org_status_options,
+                                       'person_status_options' => $person_status_options,
+                                       'meeting' => isset($_GET['meeting']) ? $_GET['meeting'] : '',
+                                       'species' => isset($_GET['species']) ? $_GET['species'] : '',
+                                  ));
 }
 
 /**
  * Callback function for Contacts dataTables serverside processing.
-*/
+ */
 function contacts_datatables_list() {
     if (!CMSUtils::request_is_ajax()) {
         drupal_not_found();
@@ -115,7 +86,7 @@ function contacts_datatables_list() {
 
     /**
      * Map LDAP attributes for filtering
-    */
+     */
     $columns = array(
         'uid',
         'givenname',
@@ -129,12 +100,7 @@ function contacts_datatables_list() {
         'conventions',
     );
 
-    $users = array();
-
-    $current_profile = CMSUtils::get_current_profile();
-    $websites = CMSUtils::get_all_websites();
     $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
-    $countries = isset($_GET['country']) ? $_GET['country'] : array();
 
     $page = (isset($_GET['iDisplayStart']) && intval($_GET['iDisplayStart'])) ? $_GET['iDisplayStart'] : 1;
     $per_page = (isset($_GET['iDisplayLength']) && intval($_GET['iDisplayLength'])) ? $_GET['iDisplayLength'] : 10;
@@ -142,46 +108,25 @@ function contacts_datatables_list() {
     $total_entries = 0;
 
     $instruments = CMSLegalInstrument::get_mapped_instruments();
-    $insturments_names = array();
     foreach (array_keys($instruments) as $instrument_name) {
         $instruments_names[strtolower($instrument_name)] = $instrument_name;
     }
 
-    $species_options = array();
-    $meeting_options = array();
-    $region_options = array();
-    $mailing_options = array();
-    $org_status_options = array();
-    $person_status_options = array();
+    $species_options = $meeting_options = $region_options = $mailing_options = $org_status_options = $person_status_options = array();
 
-    if (empty($selected_instruments) || ($selected_instruments == 'null') || ($selected_instruments[0] == '')) {
-        foreach ($websites as $name => $website) {
-            $remote_species = api_species_list('species_from_cache', $name);
-            $species_options = array_merge($species_options, $remote_species);
-            $remote_meetings = api_meeting_list('cache', $name);
-            $meeting_options = array_merge($meeting_options, $remote_meetings);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $name, $website['title']);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $name, $website['title']);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $name, $website['title']);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $name, $website['title']);
-        }
-    }else {
-        foreach ($selected_instruments as $instrument) {
-            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
-            $species_options = api_species_list('species_from_cache', $instrument);
-            $meeting_options = api_meeting_list('cache', $instrument);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $instrument, $title);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $instrument, $title);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $instrument, $title);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $instrument, $title);
-        }
-    }
+    _build_exposed_form_options(
+        $selected_instruments,
+        $species_options,
+        $meeting_options,
+        $region_options,
+        $mailing_options,
+        $org_status_options,
+        $person_status_options
+    );
 
     /**
      * Connect to LDAP server
-    */
+     */
     $users = array();
     $agent = CMSContacts::agent();
     if (!$agent->connected) {
@@ -191,12 +136,12 @@ function contacts_datatables_list() {
 
         /**
          * Search LDAP records based on filter
-        */
+         */
         $result = $agent->search($agent->people_dn, $filter);
 
         /**
          * Sort LDAP search results
-        */
+         */
         if (isset($_GET['iSortCol_0'])) {
             $result = $agent->sort($columns[$_GET['iSortCol_0']]);
         }
@@ -207,7 +152,7 @@ function contacts_datatables_list() {
         /**
          * Remove 'count' element from users results;
          * If sort direction is descending we don't want to include 'count' too
-        */
+         */
         unset($all_users['count']);
 
         if (isset($_GET['sSortDir_0']) && ($_GET['sSortDir_0'] == 'desc')) {
@@ -216,7 +161,7 @@ function contacts_datatables_list() {
 
         /**
          * Page search results
-        */
+         */
         $paged_entries = array_chunk($all_users, $per_page);
         $users = $paged_entries[$page - 1];
         $total_pages = ceil($total_entries / $per_page);
@@ -224,7 +169,7 @@ function contacts_datatables_list() {
 
     /**
      * Build data for dataTables
-    */
+     */
     $aaData = array();
     foreach ($users as $index => $user) {
         $aaData[$index] = array(
@@ -321,11 +266,11 @@ function contacts_datatables_list() {
 
 /**
  * Callback function for Contacts dataTables serverside processing.
-*/
+ */
 function organizations_datatables_list() {
     /**
      * Map LDAP attributes for filtering
-    */
+     */
     $columns = array(
         'oid',
         'o',
@@ -336,10 +281,8 @@ function organizations_datatables_list() {
 
     $organizations = array();
 
-    $current_profile = CMSUtils::get_current_profile();
     $websites = CMSUtils::get_all_websites();
     $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
-    $countries = isset($_GET['country']) ? $_GET['country'] : array();
 
     $page = (isset($_GET['iDisplayStart']) && intval($_GET['iDisplayStart'])) ? $_GET['iDisplayStart'] : 1;
     $per_page = (isset($_GET['iDisplayLength']) && intval($_GET['iDisplayLength'])) ? $_GET['iDisplayLength'] : 10;
@@ -352,33 +295,21 @@ function organizations_datatables_list() {
         $instruments_names[strtolower($instrument_name)] = $instrument_name;
     }
 
-    $region_options = array();
-    $mailing_options = array();
-    $org_status_options = array();
-    $person_status_options = array();
+    $species_options = $meeting_options = $region_options = $mailing_options = $org_status_options = $person_status_options = array();
 
-    if (empty($selected_instruments) || ($selected_instruments == 'null') || ($selected_instruments[0] == '')) {
-        foreach ($websites as $name => $website) {
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $name, $website['title']);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $name, $website['title']);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $name, $website['title']);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $name, $website['title']);
-        }
-    }else {
-        foreach ($selected_instruments as $instrument) {
-            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $instrument, $title);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $instrument, $title);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $instrument, $title);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $instrument, $title);
-        }
-    }
+    _build_exposed_form_options(
+        $selected_instruments,
+        $species_options,
+        $meeting_options,
+        $region_options,
+        $mailing_options,
+        $org_status_options,
+        $person_status_options
+    );
 
     /**
      * Connect to LDAP server
-    */
+     */
     $agent = CMSContacts::agent();
     if (!$agent->connected) {
         drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
@@ -387,12 +318,12 @@ function organizations_datatables_list() {
 
         /**
          * Search LDAP records based on filter
-        */
+         */
         $result = $agent->search($agent->organization_dn, $filter);
 
         /**
          * Sort LDAP search results
-        */
+         */
         if (isset($_GET['iSortCol_0'])) {
             $result = $agent->sort($columns[$_GET['iSortCol_0']]);
         }
@@ -403,7 +334,7 @@ function organizations_datatables_list() {
         /**
          * Remove 'count' element from users results;
          * If sort direction is descending we don't want to include 'count' too
-        */
+         */
         unset($all_organizations['count']);
 
         if (isset($_GET['sSortDir_0']) && ($_GET['sSortDir_0'] == 'desc')) {
@@ -412,7 +343,7 @@ function organizations_datatables_list() {
 
         /**
          * Page search results
-        */
+         */
         $paged_entries = array_chunk($all_organizations, $per_page);
         $organizations = $paged_entries[$page - 1];
         $total_pages = ceil($total_entries / $per_page);
@@ -420,7 +351,7 @@ function organizations_datatables_list() {
 
     /**
      * Build data for dataTables
-    */
+     */
     $aaData = array();
     foreach ($organizations as $index => $organization) {
         $aaData[$index] = array(
@@ -495,62 +426,24 @@ function organizations_datatables_list() {
  * Callback function for menu.
  */
 function organizations_list() {
-    $availability_statuses = array("TRUE", "FALSE", TRUE, FALSE);
-    $current_profile = CMSUtils::get_current_profile();
-    $users = array();
     $groups = CMSUtils::get_mapped_websites();
-    $websites = CMSUtils::get_all_websites();
     $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
-    $operator = (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of';
-    $per_field_operator = (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of';
-    $countries = isset($_GET['country']) ? $_GET['country'] : array();
-    $regions = isset($_GET['region']) ? $_GET['region'] : array();
-    $availability = (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "";
-    $mailing_list = isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array();
-    $person_status = isset($_GET['person_status']) ? $_GET['person_status'] : array();
-    $organization_status = isset($_GET['organization_status']) ? $_GET['organization_status'] : array();
-    $species = isset($_GET['species']) ? $_GET['species'] : '';
-    $meeting = isset($_GET['meeting']) ? $_GET['meeting'] : '';
 
-    $species_options = array();
-    $meeting_options = array();
-    $region_options = array();
-    $mailing_options = array();
-    $org_status_options = array();
-    $person_status_options = array();
+    $species_options = $meeting_options = $region_options = $mailing_options = $org_status_options = $person_status_options = array();
+    _build_exposed_form_options(
+        $selected_instruments,
+        $species_options,
+        $meeting_options,
+        $region_options,
+        $mailing_options,
+        $org_status_options,
+        $person_status_options
+    );
 
-    if (empty($selected_instruments) || ($selected_instruments == 'null') || ($selected_instruments[0] == '')) {
-        foreach ($websites as $name => $website) {
-            $remote_species = api_species_list('species_from_cache', $name);
-            $species_options = array_merge($species_options, $remote_species);
-            $remote_meetings = api_meeting_list('cache', $name);
-            $meeting_options = array_merge($meeting_options, $remote_meetings);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $name, $website['title']);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $name, $website['title']);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $name, $website['title']);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $name, $website['title']);
-        }
-    }else {
-        foreach ($selected_instruments as $instrument) {
-            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
-            $species_options = api_species_list('species_from_cache', $instrument);
-            $meeting_options = api_meeting_list('cache', $instrument);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $instrument, $title);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $instrument, $title);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $instrument, $title);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $instrument, $title);
-        }
-    }
-
-    $instruments = array();
     $mapped_instruments = array();
     $page = (isset($_GET['page']) && (is_numeric($_GET['page']))) ? $_GET['page'] : 1;
     $per_page_options = array(10, 25, 50, 100);
     $per_page = (isset($_GET['per_page']) && (is_numeric($_GET['per_page'])) && (in_array($_GET['per_page'], $per_page_options))) ? $_GET['per_page'] : 10;
-    $total_pages = 1;
-    $total_entries = 0;
 
     foreach ($groups as $group => $title) {
         $mapped_instruments[CMSUtils::slug($group)] = $title;
@@ -564,35 +457,35 @@ function organizations_list() {
     drupal_set_breadcrumb($breadcrumb);
 
     return theme('contacts_organizations_list', array(
-        'page' => $page,
-        'per_page' => $per_page,
-        'per_page_options' => $per_page_options,
-        'operator' => $operator,
-        'per_field_operator' => $per_field_operator,
-        'instrument' => $selected_instruments,
-        'countries' => $countries,
-        'instruments' => $mapped_instruments,
-        'regions' => $regions,
-        'mailing_list' => $mailing_list,
-        'availability' => $availability,
-        'person_status' => $person_status,
-        'organization_status' => $organization_status,
-        'species_options' => $species_options,
-        'meeting_options' => $meeting_options,
-        'region_options' => $region_options,
-        'mailing_options' => $mailing_options,
-        'org_status_options' => $org_status_options,
-        'person_status_options' => $person_status_options,
-        'meeting' => $meeting,
-        'species' => $species,
-    ));
+                                                     'page' => $page,
+                                                     'per_page' => $per_page,
+                                                     'per_page_options' => $per_page_options,
+                                                     'operator' => (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of',
+                                                     'per_field_operator' => (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of',
+                                                     'instrument' => $selected_instruments,
+                                                     'countries' => isset($_GET['country']) ? $_GET['country'] : array(),
+                                                     'instruments' => $mapped_instruments,
+                                                     'regions' => isset($_GET['region']) ? $_GET['region'] : array(),
+                                                     'mailing_list' => isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array(),
+                                                     'availability' => (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "",
+                                                     'person_status' => isset($_GET['person_status']) ? $_GET['person_status'] : array(),
+                                                     'organization_status' => isset($_GET['organization_status']) ? $_GET['organization_status'] : array(),
+                                                     'species_options' => $species_options,
+                                                     'meeting_options' => $meeting_options,
+                                                     'region_options' => $region_options,
+                                                     'mailing_options' => $mailing_options,
+                                                     'org_status_options' => $org_status_options,
+                                                     'person_status_options' => $person_status_options,
+                                                     'meeting' => isset($_GET['meeting']) ? $_GET['meeting'] : '',
+                                                     'species' => isset($_GET['species']) ? $_GET['species'] : '',
+                                                ));
 }
 
 /**
  * Callback function for menu item
  *
  * Exported listed contacts to CSV format
-*/
+ */
 function contacts_export() {
     $columns = array(
         'uid',
@@ -607,15 +500,11 @@ function contacts_export() {
         'conventions',
     );
 
-    $current_profile = CMSUtils::get_current_profile();
-    $websites = CMSUtils::get_all_websites();
     $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
-    $countries = isset($_GET['country']) ? $_GET['country'] : array();
 
     $page = (isset($_GET['iDisplayStart']) && intval($_GET['iDisplayStart'])) ? $_GET['iDisplayStart'] : 1;
     $per_page = (isset($_GET['iDisplayLength']) && intval($_GET['iDisplayLength'])) ? $_GET['iDisplayLength'] : 10;
     $page = $page / $per_page + 1;
-    $total_entries = 0;
 
     $instruments = CMSLegalInstrument::get_mapped_instruments();
     $insturments_names = array();
@@ -623,41 +512,20 @@ function contacts_export() {
         $instruments_names[strtolower($instrument_name)] = $instrument_name;
     }
 
-    $species_options = array();
-    $meeting_options = array();
-    $region_options = array();
-    $mailing_options = array();
-    $org_status_options = array();
-    $person_status_options = array();
-
-    if (empty($selected_instruments) || ($selected_instruments == 'null') || ($selected_instruments[0] == '')) {
-        foreach ($websites as $name => $website) {
-            $remote_species = api_species_list('species_from_cache', $name);
-            $species_options = array_merge($species_options, $remote_species);
-            $remote_meetings = api_meeting_list('cache', $name);
-            $meeting_options = array_merge($meeting_options, $remote_meetings);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $name, $website['title']);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $name, $website['title']);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $name, $website['title']);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $name, $website['title']);
-        }
-    }else {
-        foreach ($selected_instruments as $instrument) {
-            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
-            $species_options = api_species_list('species_from_cache', $instrument);
-            $meeting_options = api_meeting_list('cache', $instrument);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $instrument, $title);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $instrument, $title);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $instrument, $title);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $instrument, $title);
-        }
-    }
+    $species_options = $meeting_options = $region_options = $mailing_options = $org_status_options = $person_status_options = array();
+    _build_exposed_form_options(
+        $selected_instruments,
+        $species_options,
+        $meeting_options,
+        $region_options,
+        $mailing_options,
+        $org_status_options,
+        $person_status_options
+    );
 
     /**
      * Connect to LDAP server
-    */
+     */
     $agent = CMSContacts::agent();
     if (!$agent->connected) {
         drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
@@ -666,7 +534,7 @@ function contacts_export() {
 
         /**
          * Search LDAP records based on filter
-        */
+         */
         $result = $agent->search($agent->people_dn, $filter);
         if (isset($_GET['iSortCol_0'])) {
             $result = $agent->sort($columns[$_GET['iSortCol_0']]);
@@ -689,12 +557,12 @@ function contacts_export() {
 
         /**
          * Add BOM_UTF-8 header
-        */
+         */
         fputs($fp, $bom =( chr(0xEF) . chr(0xBB) . chr(0xBF) ));
 
         /**
          * CSV file headers
-        */
+         */
         $headers = array(
             //'ID',
             //'UID',
@@ -789,10 +657,8 @@ function contacts_export() {
  * Callback function for menu item.
  *
  * Show contact details of a specified UID
-*/
+ */
 function contacts_view($contact_id, $group) {
-    $current_profile = CMSUtils::get_current_profile();
-
     $agent = CMSContacts::agent();
 
     $contact = $agent->search_user($contact_id);
@@ -802,7 +668,6 @@ function contacts_view($contact_id, $group) {
         drupal_not_found();
         drupal_exit();
     }
-
 
     $page_title = $contact['givenname'][0] . ' ' . $contact['sn'][0];
     drupal_set_title($page_title, PASS_THROUGH);
@@ -817,8 +682,8 @@ function contacts_view($contact_id, $group) {
     $contact['meetings'] = CMSContacts::get_contact_related_content($contact_id, 'meeting', 'field_meeting_participants');
 
     return theme('contacts_view', array(
-        'user' => $contact,
-    ));
+                                       'user' => $contact,
+                                  ));
 }
 
 
@@ -827,10 +692,8 @@ function contacts_view($contact_id, $group) {
  * Callback function for menu item.
  *
  * Show organization details of a specified OID
-*/
+ */
 function organization_view($organization_id, $group) {
-    $current_profile = CMSUtils::get_current_profile();
-
     $agent = CMSContacts::agent();
 
     $organization = $agent->search_organization($organization_id);
@@ -852,13 +715,13 @@ function organization_view($organization_id, $group) {
 
     $organization['instrument'] = $group;
     return theme('contacts_organization_view', array(
-        'user' => $organization,
-    ));
+                                                    'user' => $organization,
+                                               ));
 }
 
 /**
  * Contacts add form validate handler
-*/
+ */
 function cms_contacts_form_validate($form, &$form_state) {
     $values = $form_state['values'];
     if (!empty($value['email']) && !valid_email_address($values['email'])) {
@@ -882,7 +745,7 @@ function cms_contacts_form_validate($form, &$form_state) {
 
 /**
  * Organization add form validate handler
-*/
+ */
 function organization_form_validate($form, &$form_state) {
     $values = $form_state['values'];
     if (!isset($values['name'])) {
@@ -897,7 +760,7 @@ function organization_form_validate($form, &$form_state) {
 
 /**
  * Contacts add form submit handler
-*/
+ */
 function cms_contacts_form_submit($form, &$form_state) {
     $agent = CMSContacts::agent();
     $edit = (isset($form['#contact']) && (!empty($form['#contact']))) ? TRUE : FALSE;
@@ -934,7 +797,7 @@ function cms_contacts_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -971,7 +834,7 @@ function cms_contacts_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -994,7 +857,7 @@ function cms_contacts_form_submit($form, &$form_state) {
 
 /**
  * Contacts add form submit handler
-*/
+ */
 function organization_form_submit($form, &$form_state) {
     $edit = (isset($form['#organization']) && (!empty($form['#organization']))) ? TRUE : FALSE;
     $organization_data = CMSContacts::prepare_organization_data($form_state['values'], $edit);
@@ -1022,7 +885,7 @@ function organization_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -1041,7 +904,7 @@ function organization_form_submit($form, &$form_state) {
 
             /**
              * Redirect to contact page
-            */
+             */
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -1064,7 +927,7 @@ function organization_form_submit($form, &$form_state) {
 
 /**
  * Contacts add form
-*/
+ */
 function contacts_add($type) {
     drupal_set_title(t('Add new @name', array('@name' => $type)), PASS_THROUGH);
 
@@ -1077,7 +940,7 @@ function contacts_add($type) {
     switch($type) {
         case 'contact':
             return drupal_get_form('cms_contacts_form', array());
-            default;
+        default;
             break;
 
         case 'organization':
@@ -1088,7 +951,7 @@ function contacts_add($type) {
 
 /**
  * Contacts edit form
-*/
+ */
 function contacts_edit($contact_id, $group) {
     $current_profile = CMSUtils::get_current_profile();
     if ($current_profile != 'cms') {
@@ -1119,7 +982,7 @@ function contacts_edit($contact_id, $group) {
 
 /**
  * Organizations edit form
-*/
+ */
 function organization_edit($organization_id, $group) {
     $current_profile = CMSUtils::get_current_profile();
     if ($current_profile != 'cms') {
@@ -1238,7 +1101,7 @@ function contacts_delete_confirm_submit($form, &$form_state) {
 
         /**
          * Delete user from all assigned groups
-        */
+         */
         if ($contact['conventions']['count']) {
             foreach ($contact['conventions'] as $index => $group_name) {
                 if (is_numeric($index)) {
@@ -1290,7 +1153,7 @@ function organization_delete_confirm_submit($form, &$form_state) {
  * Callback function for menu item.
  *
  * Read organization LDIFs and check if a user alreardy exists and update its conventions attribute
-*/
+ */
 function contacts_update_duplicates() {
     $profiles = array('aewa', 'cms', 'ascobans', 'eurobats');
 
@@ -1306,7 +1169,7 @@ function contacts_update_duplicates() {
                     if ($results['count'] == 1) {
                         /**
                          * Check if user already has assigned the instrument
-                        */
+                         */
                         $exists = (in_array($profile, array_values($results[0]['conventions']))) ? TRUE : FALSE;
                         if (!$exists) {
                             $user_dn = "uid=" . $user->uid . ",ou=Users,o=CMS";
@@ -1368,12 +1231,42 @@ function build_terms_options($vocabularies = array(), $existing_options = array(
     return $options;
 }
 
+function _build_exposed_form_options($selected_instruments, &$species_options, &$meeting_options, &$region_options, &$mailing_options, &$org_status_options, &$person_status_options) {
+    $websites = CMSUtils::get_all_websites();
+
+    if (empty($selected_instruments) || ($selected_instruments == 'null') || ($selected_instruments[0] == '')) {
+        foreach ($websites as $name => $website) {
+            $remote_species = api_species_list('species_from_cache', $name);
+            $species_options = array_merge($species_options, $remote_species);
+            $remote_meetings = api_meeting_list('cache', $name);
+            $meeting_options = array_merge($meeting_options, $remote_meetings);
+            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
+            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $name, $website['title']);
+            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $name, $website['title']);
+            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $name, $website['title']);
+            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $name, $website['title']);
+        }
+    }else {
+        foreach ($selected_instruments as $instrument) {
+            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
+            $species_options = api_species_list('species_from_cache', $instrument);
+            $meeting_options = api_meeting_list('cache', $instrument);
+            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
+            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $instrument, $title);
+            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $instrument, $title);
+            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $instrument, $title);
+            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $instrument, $title);
+        }
+    }
+}
+
+
 /**
  * Build LDAP filter for Contacts
  *
  * @param   string   $profile   Convention to look for
  * @return  strgin   $filter
-*/
+ */
 function _build_contacts_filter($objectClass = 'cmsContact') {
     $selected_operator = (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of';
     $selected_per_field_operator = (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of';
@@ -1391,39 +1284,16 @@ function _build_contacts_filter($objectClass = 'cmsContact') {
         $selected_instruments = explode(',', $selected_instruments);
     }
 
-    $websites = CMSUtils::get_all_websites();
-
-    $species_options = array();
-    $meeting_options = array();
-    $region_options = array();
-    $mailing_options = array();
-    $org_status_options = array();
-    $person_status_options = array();
-
-    if (empty($selected_instruments) || ($selected_instruments == 'null')) {
-        foreach ($websites as $name => $website) {
-            $remote_species = api_species_list('species_from_cache', $name);
-            $species_options = array_merge($species_options, $remote_species);
-            $remote_meetings = api_meeting_list('cache', $name);
-            $meeting_options = array_merge($meeting_options, $remote_meetings);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $name, $website['title'], FALSE);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $name, $website['title'], FALSE);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $name, $website['title'], FALSE);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $name, $website['title'], FALSE);
-        }
-    }else {
-        foreach ($selected_instruments as $instrument) {
-            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
-            $species_options = api_species_list('species_from_cache', $instrument);
-            $meeting_options = api_meeting_list('cache', $instrument);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
-            $mailing_options = build_terms_options($vocabularies, $mailing_options, VOC_CONTACTS_MAILING, $instrument, $title, FALSE);
-            $region_options = build_terms_options($vocabularies, $region_options, VOC_REGION, $instrument, $title, FALSE);
-            $org_status_options = build_terms_options($vocabularies, $org_status_options, VOC_STATUS_ORGANIZATION, $instrument, $title, FALSE);
-            $person_status_options = build_terms_options($vocabularies, $person_status_options, VOC_STATUS_PERSON, $instrument, $title, FALSE);
-        }
-    }
+    $species_options = $meeting_options = $region_options = $mailing_options = $org_status_options = $person_status_options = array();
+    _build_exposed_form_options(
+        $selected_instruments,
+        $species_options,
+        $meeting_options,
+        $region_options,
+        $mailing_options,
+        $org_status_options,
+        $person_status_options
+    );
 
     $operator = ($selected_operator == 'is_all_of') ? '&' : '|';
     $per_field_operator = ($selected_per_field_operator == 'is_all_of') ? '&' : '|';

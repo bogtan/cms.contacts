@@ -1,23 +1,31 @@
 <?php
 
 /**
- * Generate the node add/edit form array.
+ * @file
+ *    Used to describe and build Drupal forms to add data in LDAP database
+ *
+ * @author
+ *    Bogdan Tanase
+ */
+
+/**
+ * Implements hook_form()
+ *
+ * Generate the Add/Edit form for LDAP contact
+ *
+ * @param   array   $form
+ * @param   array   $form_state
+ * @param   array   $contact
+ *
+ * @return  array   $form
  */
 function cms_contacts_form($form, &$form_state, $contact) {
-    global $user;
-
     if (!isset($form_state['contact'])) {
         $form['#contacts_edit_form'] = FALSE;
         $form_state['contact'] = $contact;
     }else {
         $form['#contacts_edit_form'] = TRUE;
         $contact = $form_state['contact'];
-    }
-
-    $countries = countries_get_countries();
-    $country_options[''] = t('Select country');
-    foreach ($countries as $country) {
-        $country_options[$country->iso2] = $country->name;
     }
 
     $form['#attributes']['class'][] = 'contacts-form';
@@ -32,10 +40,10 @@ function cms_contacts_form($form, &$form_state, $contact) {
     );
 
     $form['actions']['submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save'),
-      '#weight' => 5,
-      '#submit' => array('cms_contacts_form_submit'),
+        '#type' => 'submit',
+        '#value' => t('Save'),
+        '#weight' => 5,
+        '#submit' => array('cms_contacts_form_submit'),
     );
 
     if (!empty($contact['uid'])) {
@@ -150,7 +158,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
     );
 
     $additional_email_default = CMSContacts::get_multiple_attribute($contact, 'additionalemails');
-
     $form['additional_emails'] = array(
         '#type' => 'textfield',
         '#title' => t('Additional emails'),
@@ -179,7 +186,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
 
     $person_statuses = CMSUtils::vocabulary_get_terms(VOC_STATUS_PERSON);
     $contact_statuses = CMSContacts::contact_map_terms($contact, 'statusperson', $person_statuses);
-
     $form['person_status'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -189,18 +195,22 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#size' => 5,
     );
 
-    $current_profile = CMSUtils::get_current_profile();
-    $options = CMSLegalInstrument::cms_instruments_names();
-
+    $instruments_options = CMSLegalInstrument::cms_instruments_names();
     $form['conventions'] = array(
         '#type' => 'select',
         '#required' => TRUE,
         '#multiple' => TRUE,
         '#title' => t('CMS Instruments'),
         '#default_value' => isset($contact['conventions']) ? $contact['conventions'] : '',
-        '#options' => $options,
+        '#options' => $instruments_options,
         '#size' => 5,
     );
+
+    $countries = countries_get_countries();
+    $country_options[''] = t('Select country');
+    foreach ($countries as $country) {
+        $country_options[$country->iso2] = $country->name;
+    }
 
     $form['country_post'] = array(
         '#type' => 'select',
@@ -219,7 +229,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
 
     $organization_statuses = CMSUtils::vocabulary_get_terms(VOC_STATUS_ORGANIZATION);
     $contact_org_statuses = CMSContacts::contact_map_terms($contact, 'statusorganization', $organization_statuses);
-
     $form['organization_status'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -239,7 +248,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
 
     $mailing_lists = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_MAILING);
     $contact_mailing_lists = CMSContacts::contact_map_terms($contact, 'mailinglists', $mailing_lists);
-
     $form['mailing_list'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -251,7 +259,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
 
     $languages = CMSUtils::vocabulary_get_terms(VOC_UN_LANGUAGES);
     $contact_language = CMSContacts::contact_map_terms($contact, 'preferredlanguages', $languages);
-
     $form['preferred_language'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -365,11 +372,17 @@ function cms_contacts_form($form, &$form_state, $contact) {
 
 
 /**
- * Generate the node add/edit form array.
+ * Implements hook_form();
+ *
+ * Generate the Add/Edit form for LDAP organization
+ *
+ * @param   array   $form
+ * @param   array   $form_state
+ * @param   array   $contact
+ *
+ * @return  array   $form
  */
 function organization_form($form, &$form_state, $organization) {
-    global $user;
-
     if (!isset($form_state['organization'])) {
         $form['#organization_edit_form'] = FALSE;
         $form_state['organization'] = $organization;
@@ -396,10 +409,10 @@ function organization_form($form, &$form_state, $organization) {
     );
 
     $form['actions']['submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save'),
-      '#weight' => 5,
-      '#submit' => array('organization_form_submit'),
+        '#type' => 'submit',
+        '#value' => t('Save'),
+        '#weight' => 5,
+        '#submit' => array('organization_form_submit'),
     );
 
     $form['availability'] = array(
@@ -600,7 +613,6 @@ function organization_form($form, &$form_state, $organization) {
         '#maxlength' => 512,
     );
 
-    $current_profile = CMSUtils::get_current_profile();
     $options = $mapped_instruments = CMSLegalInstrument::cms_instruments_names();
 
     $form['conventions'] = array(
