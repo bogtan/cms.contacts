@@ -1,21 +1,18 @@
 <?php
 
 /**
- * Implement hook_install().
+ * @file
+ *    Define install/uninstall tasks and update scripts for Contacts
+ * @author
+ *    Bogdan Tanase
  */
-function cms_contacts_uninstall() {
-    user_role_delete(ROLE_MANAGE_SPECIES);
-
-    CMSUtils::vocabulary_delete(VOC_STATUS_ORGANIZATION);
-    CMSUtils::vocabulary_delete(VOC_STATUS_PERSON);
-    CMSUtils::vocabulary_delete(VOC_REGION);
-    CMSUtils::vocabulary_delete(VOC_CONTACTS_MAILING);
-
-    CMSUtils::remove_menu_and_submenu('main-menu', 'Contacts', '<front>');
-}
 
 /**
- * Implement hook_uninstall().
+ * Implement hook_install().
+ *
+ * - Define Contacts specific roles and permissions
+ * - Create taxonomy vocabularies used for Contacts data
+ * - Set permissions per vocabulary
  */
 function cms_contacts_install() {
     $role = CMSUtils::get_or_create_role(ROLE_MANAGE_CONTACTS);
@@ -48,4 +45,20 @@ function cms_contacts_install() {
     } else {
         watchdog('contacts', "Unable to load role name '@role'", array("@role" => ROLE_MANAGE_CONTACTS), WATCHDOG_WARNING);
     }
+}
+
+/**
+ * Implement hook_uninstall().
+ *
+ * Remove Contacts specific roles, vocabularies and menu items
+ */
+function cms_contacts_uninstall() {
+    user_role_delete(ROLE_MANAGE_CONTACTS);
+
+    CMSUtils::vocabulary_delete(VOC_STATUS_ORGANIZATION);
+    CMSUtils::vocabulary_delete(VOC_STATUS_PERSON);
+    CMSUtils::vocabulary_delete(VOC_REGION);
+    CMSUtils::vocabulary_delete(VOC_CONTACTS_MAILING);
+
+    CMSUtils::remove_menu_and_submenu('main-menu', 'Contacts', '<front>');
 }

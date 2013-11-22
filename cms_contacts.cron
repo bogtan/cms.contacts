@@ -1,9 +1,18 @@
 <?php
 
+/**
+ * @file
+ *    Define Drupal crons tasks used for Contacts
+*/
+
 define('CONTACTS_TAXONOMY_CACHE_FILENAME', 'taxonomy.json');
 
 /**
  * Implementation of hook_cron_queue_info()
+ *
+ * Define queues for retrieving Contacts related taxonomies from remote websites
+ *
+ * @return   array   $queues
  */
 function cms_contacts_cron_queue_info() {
     $websites = CMSUtils::get_all_websites();
@@ -20,11 +29,12 @@ function cms_contacts_cron_queue_info() {
 
 /**
  * Implementation of hook_cron()
+ *
+ * Put all cron tasks in a queue for processing
  */
 function cms_contacts_cron() {
     $websites = CMSUtils::get_all_websites();
 
-    // Put everything in a queue for processing.
     foreach($websites as $website_id => $website) {
         $queue = DrupalQueue::get($website_id . '_remote_contacts_taxonomy');
         $queue->createItem($website_id);
@@ -33,6 +43,12 @@ function cms_contacts_cron() {
 
 /**
  * Worker Callback for the get_remote_contacts_taxonomy cron queue.
+ *
+ * Connect remotely to a specified Drupal website, get the JSON taxonomy data
+ * and save it locally in cache file.
+ *
+ * @param   string   $item
+ *    Slug of the website from which to retrieve the taxonomy data
  */
 function get_remote_contacts_taxonomy_run($item) {
     $websites = CMSUtils::get_all_websites();

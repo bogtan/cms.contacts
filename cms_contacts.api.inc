@@ -8,7 +8,7 @@
 /**
  * Menu callback for /contact/list/terms
  *
- * List contacts related taxonomy terms from cache
+ * List Contacts related taxonomy terms from cache
  *
  * @param   string   $website
  *    Website for which to retrieve the taxonomy terms from cache

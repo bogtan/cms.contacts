@@ -3,6 +3,8 @@
 /**
  * @file
  *    Used to define Contacts' menu items
+ * @author
+ *    Bogdan Tanase
 */
 
 /**
@@ -29,7 +31,7 @@ function cms_contacts_menu_alter(&$items) {
  *
  * Define contacts related menu items
  *
- * @retur   array   $items
+ * @return   array   $items
  */
 function cms_contacts_menu() {
     $items = array();

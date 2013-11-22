@@ -3,7 +3,6 @@
 /**
  * @file
  *    Handle listing of LDAP data, forms' validations and submissions, data export
- *
  * @author
  *    Bogdan Tanase
  */
@@ -90,8 +89,6 @@ function contacts_datatables_list() {
         'st',
         'conventions',
     );
-
-    $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
 
     $page = (isset($_GET['iDisplayStart']) && intval($_GET['iDisplayStart'])) ? $_GET['iDisplayStart'] : 1;
     $per_page = (isset($_GET['iDisplayLength']) && intval($_GET['iDisplayLength'])) ? $_GET['iDisplayLength'] : 10;

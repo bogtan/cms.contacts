@@ -1,11 +1,20 @@
 <?php
 
 /**
+ * @file
+ *    Create Contacts administration settings form
+ * @author
+ *    Bogdan Tanase
+*/
+
+/**
  * Implements hook_admin();
  *
- * Create CMS Contacts administration settings form.
  * The form allows administrators to configure the LDAP server from the
  * Drupal administration interface.
+ *
+ * @see      system_settings_form()
+ * @return   array   $form
  */
 function cms_contacts_admin() {
     $form = array();
