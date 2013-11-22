@@ -541,57 +541,169 @@ function contacts_export() {
         fputcsv($fp, $headers);
 
         foreach($all_users as $index => $user) {
-            //$data = array($index + 1);
-            //CMSContacts::prepare_user_to_csv($data, $user, 'uid');
             $data = array();
-            CMSContacts::prepare_user_to_csv($data, $user, 'cmsavailability');
-            CMSContacts::prepare_user_to_csv($data, $user, 'personaltitle');
-            CMSContacts::prepare_user_to_csv($data, $user, 'givenname');
-            CMSContacts::prepare_user_to_csv($data, $user, 'sn');
-            CMSContacts::prepare_user_to_csv($data, $user, 'title');
-            CMSContacts::prepare_user_to_csv($data, $user, 'personstatus');
-            CMSContacts::prepare_user_to_csv($data, $user, 'o');
-            CMSContacts::prepare_user_to_csv($data, $user, 'ou');
-            CMSContacts::prepare_user_to_csv($data, $user, 'organizationstatus');
-            CMSContacts::prepare_user_to_csv($data, $user, 'website');
-            CMSContacts::prepare_user_to_csv($data, $user, 'street');
-            CMSContacts::prepare_user_to_csv($data, $user, 'st');
-            CMSContacts::prepare_user_to_csv($data, $user, 'postalcode');
-            CMSContacts::prepare_user_to_csv($data, $user, 'iso2');
-            CMSContacts::prepare_user_to_csv($data, $user, 'region');
-            CMSContacts::prepare_user_to_csv($data, $user, 'cpiso2');
-            CMSContacts::prepare_user_to_csv($data, $user, 'workphone');
-            CMSContacts::prepare_user_to_csv($data, $user, 'mobile');
-            CMSContacts::prepare_user_to_csv($data, $user, 'facsimiletelephonenumber');
-            CMSContacts::prepare_user_to_csv($data, $user, 'mail');
-            CMSContacts::prepare_user_to_csv($data, $user, 'additionalemails');
-            CMSContacts::prepare_user_to_csv($data, $user, 'homephone');
-            CMSContacts::prepare_user_to_csv($data, $user, 'skype');
-            CMSContacts::prepare_user_to_csv($data, $user, 'conventions');
-            CMSContacts::prepare_user_to_csv($data, $user, 'cmsmailing');
-            CMSContacts::prepare_user_to_csv($data, $user, 'description');
-            CMSContacts::prepare_user_to_csv($data, $user, 'preferredlanguage');
-
-            $meetings = CMSContacts::get_contact_related_content($user['uid'][0], 'meeting', 'field_meeting_participants', TRUE);
-            if (!empty($meetings)) {
-                $data[] = implode('; ', $meetings);
-            }else {
-                $data[] = '';
-            }
-
-            $species = CMSContacts::get_contact_related_content($user['uid'][0], 'species', 'field_species_experts', TRUE);
-            if (!empty($species)) {
-                $data[] = implode('; ', $species);
-            }else {
-                $data[] = '';
-            }
-
+            _prepare_contact_details($data, $user);
             fputcsv($fp, $data);
         }
 
         fclose($fp);
         drupal_exit();
     }
+}
+
+/**
+ * Callback function for /contacts/xls_export
+ *
+ * Export Contacts table in XLS file using PHPExcel library
+ */
+function contacts_xls_export() {
+    $library = libraries_load('PHPExcel');
+    if (empty($library['loaded'])) {
+        watchdog('contacts', "Couldn't find the PHPExcel library. Excel export aborted.", array(), WATCHDOG_ERROR);
+        drupal_set_message(t("Couldn't find the PHPExcel library. Please contact the site administrator."), 'error');
+    }
+
+    $xls = new PHPExcel();
+
+    // Set properties
+    $xls->getProperties()->setCreator("CMS Databases website");
+    $xls->getProperties()->setLastModifiedBy("CMS Databases website");
+    $xls->getProperties()->setTitle("CMS Contacts list");
+    $xls->getProperties()->setSubject("CMS Contacts list");
+    $xls->getProperties()->setDescription("List of all CMS Contacts");
+
+    // Add some data
+    $headers = array(
+        //'ID',
+        //'UID',
+        'Availability',
+        'Personal title',
+        'First name',
+        'Last name',
+        'Position',
+        'Status person',
+        'Organization',
+        'Department',
+        'Status organization',
+        'Website',
+        'Address',
+        'Town/City',
+        'Postal Code',
+        'Country',
+        'Region',
+        'Country Post',
+        'Work phone',
+        'Mobile',
+        'Fax',
+        'Work email',
+        'Personal e-mail',
+        'Additional e-mails',
+        'Home phone',
+        'Skype',
+        'CMS Instruments',
+        'Mailing lists',
+        'Description',
+        'Preferred language',
+        'Meetings',
+        'Species',
+    );
+
+    $xls->setActiveSheetIndex(0);
+
+    $letters = array();
+    $total_columns = count($headers);
+    $count = 0;
+    for ($letter = 'A'; $letter <= 'ZZ'; $letter ++) {
+        if ($count < $total_columns) {
+            $letters[] = $letter;
+        }
+
+        $count ++;
+    }
+
+    // Set Sheet column titles
+    $count = 0;
+    foreach($headers as $tittle) {
+        $cell_name = $letters[$count] . "1";
+        $count ++;
+        $value = $tittle;
+        $xls->getActiveSheet()->SetCellValue($cell_name, $value);
+        $xls->getActiveSheet()->getStyle($cell_name)->getFont()->setBold(true);
+    }
+
+    // Rename sheet
+    $xls->getActiveSheet()->setTitle('All contacts');
+
+    $columns = array(
+        'uid',
+        'givenname',
+        'sn',
+        'o',
+        'ou',
+        'mail',
+        'iso2',
+        'cpiso2',
+        'st',
+        'conventions',
+    );
+
+    $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
+
+    $page = (isset($_GET['iDisplayStart']) && intval($_GET['iDisplayStart'])) ? $_GET['iDisplayStart'] : 1;
+    $per_page = (isset($_GET['iDisplayLength']) && intval($_GET['iDisplayLength'])) ? $_GET['iDisplayLength'] : 10;
+    $page = $page / $per_page + 1;
+
+    $instruments = CMSLegalInstrument::get_mapped_instruments();
+    $insturments_names = array();
+    foreach (array_keys($instruments) as $instrument_name) {
+        $instruments_names[strtolower($instrument_name)] = $instrument_name;
+    }
+
+    /**
+     * Connect to LDAP server
+     */
+    $agent = CMSContacts::agent();
+    if (!$agent->connected) {
+        drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+    }else {
+        $filter = _build_contacts_filter();
+
+        // Search and sort LDAP records based on filter
+        $result = $agent->search($agent->people_dn, $filter);
+        if (isset($_GET['iSortCol_0'])) {
+            $result = $agent->sort($columns[$_GET['iSortCol_0']]);
+        }
+
+        $all_users = $agent->get_entries();
+        unset($all_users['count']);
+
+        // Set sorting direction
+        if (isset($_GET['sSortDir_0']) && ($_GET['sSortDir_0'] == 'desc')) {
+            $all_users = array_reverse($all_users);
+        }
+
+        // Write each user's data to the XLS file
+        foreach($all_users as $index => $user) {
+            $cell_name = "A" . ($index + 2);
+            $data = array();
+            _prepare_contact_details($data, $user);
+            $xls->getActiveSheet()->fromArray($data, NULL, $cell_name);
+        }
+    }
+
+
+    // Redirect output to a client’s web browser (Excel5)
+    drupal_add_http_header('Content-Type', 'application/vnd.ms-excel');
+    drupal_add_http_header('Content-Disposition', 'attachment;filename="contacts.xls'); // @todo Let user choose the filename
+    drupal_add_http_header('Content-Transfer-Encoding', 'binary');
+    drupal_add_http_header('Cache-Control', 'max-age=0');
+    drupal_add_http_header('Expires', 'Mon, 26 Jul 1997 05:00:00 GMT');
+    drupal_add_http_header('Last-Modified', gmdate('D, d M Y H:i:s').' GMT');
+    drupal_add_http_header('Cache-Control', 'cache, must-revalidate');
+    drupal_add_http_header('Pragma', 'public');
+
+    $xls_writer = PHPExcel_IOFactory::createWriter($xls, 'Excel5');
+    $xls_writer->save('php://output');
 }
 
 /**
@@ -1334,4 +1446,48 @@ function _build_contacts_filter($objectClass = 'cmsContact') {
 
     $filter = "(&(objectClass=" . $objectClass . ")" . $filter . ")";
     return $filter;
+}
+
+function _prepare_contact_details(&$data, $user) {
+    CMSContacts::prepare_user_to_csv($data, $user, 'cmsavailability');
+    CMSContacts::prepare_user_to_csv($data, $user, 'personaltitle');
+    CMSContacts::prepare_user_to_csv($data, $user, 'givenname');
+    CMSContacts::prepare_user_to_csv($data, $user, 'sn');
+    CMSContacts::prepare_user_to_csv($data, $user, 'title');
+    CMSContacts::prepare_user_to_csv($data, $user, 'personstatus');
+    CMSContacts::prepare_user_to_csv($data, $user, 'o');
+    CMSContacts::prepare_user_to_csv($data, $user, 'ou');
+    CMSContacts::prepare_user_to_csv($data, $user, 'organizationstatus');
+    CMSContacts::prepare_user_to_csv($data, $user, 'website');
+    CMSContacts::prepare_user_to_csv($data, $user, 'street');
+    CMSContacts::prepare_user_to_csv($data, $user, 'st');
+    CMSContacts::prepare_user_to_csv($data, $user, 'postalcode');
+    CMSContacts::prepare_user_to_csv($data, $user, 'iso2');
+    CMSContacts::prepare_user_to_csv($data, $user, 'region');
+    CMSContacts::prepare_user_to_csv($data, $user, 'cpiso2');
+    CMSContacts::prepare_user_to_csv($data, $user, 'workphone');
+    CMSContacts::prepare_user_to_csv($data, $user, 'mobile');
+    CMSContacts::prepare_user_to_csv($data, $user, 'facsimiletelephonenumber');
+    CMSContacts::prepare_user_to_csv($data, $user, 'mail');
+    CMSContacts::prepare_user_to_csv($data, $user, 'additionalemails');
+    CMSContacts::prepare_user_to_csv($data, $user, 'homephone');
+    CMSContacts::prepare_user_to_csv($data, $user, 'skype');
+    CMSContacts::prepare_user_to_csv($data, $user, 'conventions');
+    CMSContacts::prepare_user_to_csv($data, $user, 'cmsmailing');
+    CMSContacts::prepare_user_to_csv($data, $user, 'description');
+    CMSContacts::prepare_user_to_csv($data, $user, 'preferredlanguage');
+
+    $meetings = CMSContacts::get_contact_related_content($user['uid'][0], 'meeting', 'field_meeting_participants', TRUE);
+    if (!empty($meetings)) {
+        $data[] = implode('; ', $meetings);
+    }else {
+        $data[] = '';
+    }
+
+    $species = CMSContacts::get_contact_related_content($user['uid'][0], 'species', 'field_species_experts', TRUE);
+    if (!empty($species)) {
+        $data[] = implode('; ', $species);
+    }else {
+        $data[] = '';
+    }
 }
