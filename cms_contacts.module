@@ -253,6 +253,55 @@ class CMSContacts extends CMSBase {
     static $bundle_country_module = 'country';
     static $field_contacts_country = 'national_focal_points';
 
+    // Headings for CSV and XLS exported files
+    public static $export_file_headings = array(
+        'Availability',
+        'Personal title',
+        'First name',
+        'Last name',
+        'Position',
+        'Status person',
+        'Organization',
+        'Department',
+        'Status organization',
+        'Website',
+        'Address',
+        'Town/City',
+        'Postal Code',
+        'Country',
+        'Region',
+        'Country Post',
+        'Work phone',
+        'Mobile',
+        'Fax',
+        'Work email',
+        'Personal e-mail',
+        'Additional e-mails',
+        'Home phone',
+        'Skype',
+        'CMS Instruments',
+        'Mailing lists',
+        'Description',
+        'Preferred language',
+        'Meetings',
+        'Species',
+    );
+
+    // Contacts listing table columns
+    // Used for sorting LDAP results
+    public static $table_columns = array(
+        'uid',
+        'givenname',
+        'sn',
+        'o',
+        'ou',
+        'mail',
+        'iso2',
+        'cpiso2',
+        'st',
+        'conventions',
+    );
+
     // Map Contacts form fields to LDAP cmsContact attributes
     private static $user_fields = array(
         'first_name' => 'givenName',

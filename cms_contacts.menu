@@ -5,7 +5,7 @@
  *    Used to define Contacts' menu items
  * @author
  *    Bogdan Tanase
-*/
+ */
 
 /**
  * Implements hook_menu_alter().
@@ -13,7 +13,7 @@
  * Alter callback functions and access arguments for Contacts administration related menu items
  *
  * @param   $array   $items
-*/
+ */
 function cms_contacts_menu_alter(&$items) {
     $items[ADMINISTRATION_PATH . 'contacts/listing']['page callback'] = 'contacts_list';
     $items[ADMINISTRATION_PATH . 'contacts/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
@@ -121,7 +121,16 @@ function cms_contacts_menu() {
         'page callback' => 'contacts_export',
         'access arguments' => array('view contacts content'),
         'access callback' => 'cms_contacts_access',
-        'file' => 'cms_contacts.pages.inc',
+        'file' => 'cms_contacts.export.inc',
+    );
+
+    $items['contacts/xls_export'] = array(
+        'title' => 'Contacts',
+        'description' => 'Export contacts in XLS file',
+        'page callback' => 'contacts_xls_export',
+        'access arguments' => array('view contacts content'),
+        'access callback' => 'cms_contacts_access',
+        'file' => 'cms_contacts.export.inc',
     );
 
     $items[ADMINISTRATION_PATH . 'contacts/item/%/%/view'] = array(
