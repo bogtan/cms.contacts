@@ -67,11 +67,13 @@ function contacts_export() {
  * Export Contacts table in XLS file using PHPExcel library
  */
 function contacts_xls_export() {
-    $library = libraries_load('PHPExcel');
-    if (empty($library['loaded'])) {
-        watchdog('contacts', "Couldn't find the PHPExcel library. Excel export aborted.", array(), WATCHDOG_ERROR);
-        drupal_set_message(t("Couldn't find the PHPExcel library. Please contact the site administrator."), 'error');
-    }
+    $PHPExcel_path = drupal_realpath() . libraries_get_path('PHPExcel') . '/Classes/PHPExcel.php';
+    require_once($PHPExcel_path);
+//    $library = libraries_load('PHPExcel');
+//    if (empty($library['loaded'])) {
+//        watchdog('contacts', "Couldn't find the PHPExcel library. Excel export aborted.", array(), WATCHDOG_ERROR);
+//        drupal_set_message(t("Couldn't find the PHPExcel library. Please contact the site administrator."), 'error');
+//    }
 
     $xls = new PHPExcel();
 
