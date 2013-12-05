@@ -21,10 +21,10 @@
  */
 function cms_contacts_form($form, &$form_state, $contact) {
     if (!isset($form_state['contact'])) {
-        $form['#contacts_edit_form'] = FALSE;
+        $form['#contacts_edit_form'] = false;
         $form_state['contact'] = $contact;
     }else {
-        $form['#contacts_edit_form'] = TRUE;
+        $form['#contacts_edit_form'] = true;
         $contact = $form_state['contact'];
     }
 
@@ -100,7 +100,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#type' => 'textfield',
         '#title' => t('Work email'),
         '#description' => t('E-mail addresses from this field will be used for mailing purposes. Separate multiple entries with a comma.'),
-        '#required' => true,
         '#default_value' => isset($email_default) ? $email_default : '',
         '#size' => 30,
         '#maxlength' => 512,
