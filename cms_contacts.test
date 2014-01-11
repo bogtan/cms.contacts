@@ -1,5 +1,7 @@
 <?php
 
+module_load_include('test', 'cms', 'cms');
+
 class CMSContactsTestCase extends CMSWebTestCase {
 
     public static function getInfo() {
@@ -11,7 +13,7 @@ class CMSContactsTestCase extends CMSWebTestCase {
     }
 
     function setUp() {
-        parent::setUp('cms', 'contacts');
+        parent::setUp('cms', 'cms_contacts');
         $user = $this->drupalCreateUser(array('administer site configuration'));
         $this->drupalLogin($user);
         self::$bundle = 'contacts';
@@ -19,15 +21,14 @@ class CMSContactsTestCase extends CMSWebTestCase {
 
     function test_security_role_anonymous() {
         $this->drupalLogout();
-        $this->ensure_access_denied('contacts/listing', 'anonymous');
+        $this->ensure_access_denied('/manage/contacts/listing', 'anonymous');
     }
 
     function test_security_role_authenticated() {
         $user = $this->drupalCreateUser();
         $this->drupalLogin($user);
         $this->assertNotNull($this->loggedInUser);
-
-        $this->ensure_access_denied('contacts/listing', 'authenticated');
+        $this->ensure_access_denied('/' . ADMINISTRATION_PATH . 'contacts/listing', 'authenticated');
     }
 
 

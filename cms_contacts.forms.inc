@@ -183,8 +183,9 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#size' => 30,
     );
 
-    $person_statuses = CMSUtils::vocabulary_get_terms(VOC_STATUS_PERSON);
+    $person_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache');
     $contact_statuses = CMSContacts::contact_map_terms($contact, 'statusperson', $person_statuses);
+
     $form['person_status'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -226,8 +227,8 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#maxlength' => 512,
     );
 
-    $organization_statuses = CMSUtils::vocabulary_get_terms(VOC_STATUS_ORGANIZATION);
-    $contact_org_statuses = CMSContacts::contact_map_terms($contact, 'statusorganization', $organization_statuses);
+    $organization_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
+//    $contact_org_statuses = CMSContacts::contact_map_terms($contact, 'statusorganization', $organization_statuses);
     $form['organization_status'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -245,8 +246,10 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#maxlength' => 512,
     );
 
-    $mailing_lists = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_MAILING);
-    $contact_mailing_lists = CMSContacts::contact_map_terms($contact, 'mailinglists', $mailing_lists);
+//    $mailing_lists = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_MAILING);
+//    $contact_mailing_lists = CMSContacts::contact_map_terms($contact, 'mailinglists', $mailing_lists);
+    $mailing_lists = CMSContacts::create_form_options_for_field(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache');
+
     $form['mailing_list'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,

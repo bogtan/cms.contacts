@@ -95,6 +95,16 @@ function cms_contacts_admin() {
         '#required' => TRUE,
     );
 
+    $form[LDAP_INSTRUMENT_DN] = array(
+        '#type' => 'textfield',
+        '#title' => t('Instrument DN'),
+        '#default_value' => variable_get(LDAP_INSTRUMENT_DN, ''),
+        '#size' => 60,
+        '#maxlength' => 255,
+        '#description' => t('LDAP DN for instruments group'),
+        '#required' => TRUE,
+    );
+
     return system_settings_form($form);
 }
 

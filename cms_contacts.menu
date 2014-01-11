@@ -36,6 +36,46 @@ function cms_contacts_menu_alter(&$items) {
 function cms_contacts_menu() {
     $items = array();
 
+    $items['contacts/update_groups'] = array(
+        'title' => '',
+        'description' => t(''),
+        'page callback' => 'cms_contacts_update_groups',
+        'page arguments' => array(),
+        'access arguments' => array('administer contacts settings'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cms_contacts.pages.inc',
+    );
+
+    $items['contacts/update_mailing'] = array(
+        'title' => '',
+        'description' => t(''),
+        'page callback' => 'cms_contacts_update_mailing',
+        'page arguments' => array(),
+        'access arguments' => array('administer contacts settings'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cms_contacts.pages.inc',
+    );
+
+    $items['contacts/update_statuses'] = array(
+        'title' => '',
+        'description' => t(''),
+        'page callback' => 'cms_contacts_update_statuses',
+        'page arguments' => array(),
+        'access arguments' => array('administer contacts settings'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cms_contacts.pages.inc',
+    );
+
+    $items['contacts/generate_initial_ldif'] = array(
+        'title' => 'Generate LDIF',
+        'description' => t(''),
+        'page callback' => 'cms_contacts_generate_initial_ldif',
+        'page arguments' => array(),
+        'access arguments' => array('administer contacts settings'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cms_contacts.pages.inc',
+    );
+
     $items['admin/config/system/cms_contacts'] = array(
         'title' => 'CMS Contacts LDAP settings',
         'description' => t('Configure LDAP server settings'),
@@ -133,17 +173,17 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.export.inc',
     );
 
-    $items[ADMINISTRATION_PATH . 'contacts/item/%/%/view'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/item/%/view'] = array(
         'title' => 'Contacts',
         'description' => 'View contact details',
         'page callback' => 'contacts_view',
-        'page arguments' => array(3, 4),
+        'page arguments' => array(3),
         'access arguments' => array('view contacts content'),
         'access callback' => 'cms_contacts_access',
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items[ADMINISTRATION_PATH . 'contacts/item/%/%/edit'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/item/%/edit'] = array(
         'title' => 'Contacts',
         'description' => 'Edit contact details',
         'page callback' => 'contacts_edit',
@@ -155,7 +195,7 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items[ADMINISTRATION_PATH . 'contacts/item/%/%/delete'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/item/%/delete'] = array(
         'title' => 'Delete',
         'description' => 'Delete contact',
         'page callback' => 'drupal_get_form',
@@ -167,7 +207,7 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items[ADMINISTRATION_PATH . 'contacts/organization/%/%/view'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/organization/%/view'] = array(
         'title' => 'Contacts',
         'description' => 'View organization details',
         'page callback' => 'organization_view',
@@ -177,7 +217,7 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items[ADMINISTRATION_PATH . 'contacts/organization/%/%/edit'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/organization/%/edit'] = array(
         'title' => 'Contacts',
         'description' => 'Edit organization details',
         'page callback' => 'organization_edit',
@@ -189,7 +229,7 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.pages.inc',
     );
 
-    $items[ADMINISTRATION_PATH . 'contacts/organization/%/%/delete'] = array(
+    $items[ADMINISTRATION_PATH . 'contacts/organization/%/delete'] = array(
         'title' => 'Delete',
         'description' => 'Delete organization',
         'page callback' => 'drupal_get_form',

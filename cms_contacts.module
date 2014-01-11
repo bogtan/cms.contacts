@@ -252,6 +252,14 @@ function cms_contacts_node_load($nodes, $types) {
 class CMSContacts extends CMSBase {
     static $bundle_country_module = 'country';
     static $field_contacts_country = 'national_focal_points';
+    static $ldap_options_cache_field = 'ldap_options_cache';
+
+    static $mailing_list_cache = 'ldap_mailing_list_cache';
+    static $status_person_cache = 'ldap_status_person_cache';
+    static $status_organization_cache = 'ldap_status_organization_cache';
+    static $users_cache = 'ldap_users_cache';
+    static $instruments_cache = 'ldap_instruments_cache';
+    static $organizations_cache = 'ldap_organizations_cache';
 
     // Headings for CSV and XLS exported files
     public static $export_file_headings = array(
@@ -1164,5 +1172,190 @@ class CMSContacts extends CMSBase {
         $dummy->id = 1;
         $dummy->name = 'John Doe';
         return array($dummy);
+    }
+
+    /**
+     * Update LDAP taxonomies cache
+     * The cache contains mailing lists, statuses of person and statuses of organization
+    */
+    public static function update_ldap_taxonomies_cache() {
+        $agent = self::agent();
+        if (!$agent->connected) {
+            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+        }else {
+            $filter = "(|(objectClass=" . CMS_MAILING. ")(objectClass=" . CMS_STATUS_PERSON . ")(objectClass=" . CMS_STATUS_ORGANIZATION . "))";
+            $result = $agent->search($agent->base_dn, $filter);
+            $lists = $agent->get_entries();
+
+            if ($lists) {
+                unset($lists['count']);
+                foreach ($lists as $index => $list) {
+                    $pattern = '/uuid\=(.*?)\,o\=CMS/';
+                    preg_match($pattern, $list['dn'], $matches, PREG_OFFSET_CAPTURE);
+                    if (isset($matches[1])) {
+                        $uuid = $matches[1][0];
+                        $list['friendly_title'] = $list['cn'][0] . " (" . $list['in'][0] . ")";
+
+                        switch ($list['objectclass'][1]) {
+                            case CMS_MAILING:
+                                $mailing_list[$list['dn']] = $list;
+                                break;
+                            case CMS_STATUS_PERSON:
+                                $status_person[$list['dn']] = $list;
+                                break;
+                            case CMS_STATUS_ORGANIZATION:
+                                $status_organization[$list['dn']] = $list;
+                                break;
+                        }
+                    }
+                }
+            }
+
+            if ($mailing_list) {
+                cache_set(self::$mailing_list_cache, $mailing_list, 'cache', time() + 60 * 5);
+            }
+
+            if ($status_person) {
+                cache_set(self::$status_person_cache, $status_person, 'cache', time() + 60 * 5);
+            }
+
+            if ($status_organization) {
+                cache_set(self::$status_organization_cache, $status_organization, 'cache', time() + 60 * 5);
+            }
+        }
+    }
+
+    /**
+     * Cache all LDAP entries with objectClass CMS_CONTACT (default cmsContact)
+    */
+    public static function update_ldap_users_cache() {
+        $agent = self::agent();
+        if (!$agent->connected) {
+            drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
+        }else {
+            $filter = "(objectClass=" . CMS_CONTACT . ")";
+            $result = $agent->search($agent->base_dn, $filter);
+            $users = $agent->get_entries();
+            CMSUtils::unset_count_key($users);
+
+            $data_to_cache = array();
+            foreach ($users as $index => $user) {
+                $data_to_cache[$user['dn']] = $user;
+            }
+
+            if ($data_to_cache) {
+                # Create cache and keep it for 1 hour
+                cache_set(self::$users_cache, $data_to_cache, 'cache', time() + 60 * 60);
+            }
+        }
+    }
+
+    /**
+     * Cache all LDAP groups with objectClass CMS_INSTRUMENT (default cmsInstrument)
+    */
+    public static function update_ldap_instruments_cache() {
+        $agent = self::agent();
+        if (!$agent->connected) {
+            drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
+        }else {
+            $filter = "(objectClass=" . CMS_INSTRUMENT . ")";
+            $result = $agent->search($agent->base_dn, $filter);
+            $instruments = $agent->get_entries();
+            CMSUtils::unset_count_key($instruments);
+
+            $data_to_cache = array();
+            foreach ($instruments as $index => $instrument) {
+                $data_to_cache[$instrument['dn']] = $instrument;
+            }
+
+            if ($data_to_cache) {
+                # Create cache and keep it for 1 hour
+                cache_set(self::$instruments_cache, $data_to_cache, 'cache', time() + 60 * 60);
+            }
+        }
+    }
+
+    public static function update_ldap_organizations_cache() {
+        $agent = self::agent();
+        if (!$agent->connected) {
+            drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
+        }else {
+            $filter = "(objectClass=" . CMS_ORGANIZATION . ")";
+            $result = $agent->search($agent->base_dn, $filter);
+            $organizations = $agent->get_entries();
+            CMSUtils::unset_count_key($organizations);
+
+            $data_to_cache = array();
+            foreach ($organizations as $index => $organization) {
+                $data_to_cache[$organization['dn']] = $organization;
+            }
+
+            if ($data_to_cache) {
+                # Create cache and keep it for 1 hour
+                cache_set(self::$organizations_cache, $data_to_cache, 'cache', time() + 60 * 60);
+            }
+        }
+    }
+
+    /**
+     * Get a specified Drupal cache or create it if it does not exists
+     *
+     * @param    string    $cid
+     *  Drupal cache unique identifed
+     * @param    string    $callback
+     *  Callback function which creates the cache
+     */
+    public static function get_or_create_ldap_cache($cid, $callback, $remove_count = TRUE) {
+        if ($cache = cache_get($cid)) {
+            $cache_data = $cache->data;
+        }else {
+            self::$callback();
+            $cache_data = cache_get($cid)->data;
+        }
+
+        if ($remove_count) {
+            CMSUtils::unset_count_key($cache_data);
+        }
+
+        return $cache_data;
+    }
+
+    public static function get_list_from_cache($list_name, $cache_data) {
+        $list = array();
+        foreach ($cache_data as $index => $cache_list) {
+            if ($cache_list['cn'][0] == $list_name) {
+                $list = $cache_list;
+            }
+        }
+
+        return $list;
+    }
+
+    public static function get_contact_from_cache($contact_dn) {
+        $contact_dn = 'uid=' . $contact_dn . ',' . variable_get(LDAP_PEOPLE_DN, '');
+        $contacts = CMSContacts::get_or_create_ldap_cache(CMSContacts::$users_cache, 'update_ldap_users_cache');
+        $contact = array();
+        if (!empty($contacts) && (array_key_exists($contact_dn, $contacts))) {
+            $contact = $contacts[$contact_dn];
+        }
+
+        return $contact;
+    }
+
+    public static function create_form_options_for_field($cid = '', $callback = '') {
+        $options = array();
+        $cache = CMSContacts::get_or_create_ldap_cache($cid, $callback);
+        $instrument_uuid = variable_get('site_uuid', '');
+        if (!$instrument_uuid) {
+            drupal_set_message('Unable to determine site UUID!', 'error');
+        }elseif ($cache) {
+            foreach ($cache as $dn => $item) {
+                if ($item['uuid'][0] == $instrument_uuid && !array_key_exists($dn, array_keys($options))) {
+                    $options[$dn] = $item['cn'][0];
+                }
+            }
+        }
+
+        return $options;
     }
 }

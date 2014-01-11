@@ -11,171 +11,51 @@ module_load_include('inc', 'cms_contacts', 'cms_contacts.forms');
 module_load_include('inc', 'cms_contacts', 'cms_contacts.api');
 module_load_include('inc', 'cms_species', 'cms_species.api');
 module_load_include('inc', 'cms_meeting', 'cms_meeting.api');
+module_load_include('module', 'cms_instrument', 'cms_instrument');
+module_load_include('module', 'cms', 'cms');
 
 define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));
 
 /**
- *
- *
  * @return   array
  */
 function contacts_list() {
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
     drupal_set_breadcrumb($breadcrumb);
-
     drupal_set_title(t('Contacts'));
 
-    $groups = CMSUtils::get_mapped_websites();
     $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
     $per_page_options = array(10, 25, 50, 100);
 
     $options = array('species' => array(), 'meetings' => array(), 'regions' => array(), 'mailing' => array(), 'status_organization' => array(), 'status_person' => array());
     _build_contacts_exposed_form_options($selected_instruments, $options);
 
-    $mapped_instruments = array();
-    foreach ($groups as $group => $title) {
-        $mapped_instruments[CMSUtils::slug($group)] = $title;
-    }
-    $mapped_instruments = CMSLegalInstrument::cms_instruments_names();
+    $mapped_instruments = CMSLegalInstrument::list_keyed_by_uuid();
 
-    return theme('contacts_list', array(
-        'page' => (isset($_GET['page']) && (is_numeric($_GET['page']))) ? $_GET['page'] : 1,
-        'per_page' => (isset($_GET['per_page']) && (is_numeric($_GET['per_page'])) && (in_array($_GET['per_page'], $per_page_options))) ? $_GET['per_page'] : 10,
-        'per_page_options' => $per_page_options,
-        'operator' => (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of',
-        'per_field_operator' => (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of',
-        'instrument' => $selected_instruments,
-        'countries' => isset($_GET['country']) ? $_GET['country'] : array(),
-        'instruments' => $mapped_instruments,
-        'regions' => isset($_GET['region']) ? $_GET['region'] : array(),
-        'mailing_list' => isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array(),
-        'availability' => (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "",
-        'person_status' => isset($_GET['person_status']) ? $_GET['person_status'] : array(),
-        'organization_status' => isset($_GET['organization_status']) ? $_GET['organization_status'] : array(),
-        'species_options' => $options["species"],
-        'meeting_options' => $options["meetings"],
-        'region_options' => $options["regions"],
-        'mailing_options' => $options["mailing"],
-        'org_status_options' => $options["status_organization"],
-        'person_status_options' => $options["status_person"],
-        'meeting' => isset($_GET['meeting']) ? $_GET['meeting'] : '',
-        'species' => isset($_GET['species']) ? $_GET['species'] : '',
-    ));
-}
-
-/**
- * Callback function for Contacts dataTables serverside processing.
- */
-function contacts_datatables_list() {
-    if (!CMSUtils::request_is_ajax()) {
-        drupal_not_found();
-        drupal_exit();
-    }
-
-    /**
-     * Map LDAP attributes for filtering
-     */
-    $columns = array(
-        'uid',
-        'givenname',
-        'sn',
-        'o',
-        'ou',
-        'mail',
-        'countryEnglish',
-        'countryPostName',
-        'st',
-        'conventions',
-    );
-
-    $page = (isset($_GET['iDisplayStart']) && intval($_GET['iDisplayStart'])) ? $_GET['iDisplayStart'] : 1;
-    $per_page = (isset($_GET['iDisplayLength']) && intval($_GET['iDisplayLength'])) ? $_GET['iDisplayLength'] : 10;
-    $page = $page / $per_page + 1;
-    $total_entries = 0;
-
-    $instruments = CMSLegalInstrument::get_mapped_instruments();
-    foreach (array_keys($instruments) as $instrument_name) {
-        $instruments_names[strtolower($instrument_name)] = $instrument_name;
-    }
-
-    /**
-     * Connect to LDAP server
-     */
-    $users = array();
-    $agent = CMSContacts::agent();
-    if (!$agent->connected) {
-        drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
-    }else {
-        $filter = _build_contacts_filter();
-
-        /**
-         * Search LDAP records based on filter
-         */
-        $result = $agent->search($agent->people_dn, $filter);
-
-        /**
-         * Sort LDAP search results
-         */
-        if (isset($_GET['iSortCol_0'])) {
-            $result = $agent->sort($columns[$_GET['iSortCol_0']]);
-        }
-
-        $all_users = $agent->get_entries();
-        $total_entries = $all_users['count'];
-
-        /**
-         * Remove 'count' element from users results;
-         * If sort direction is descending we don't want to include 'count' too
-         */
-        unset($all_users['count']);
-
-        if (isset($_GET['sSortDir_0']) && ($_GET['sSortDir_0'] == 'desc')) {
-            $all_users = array_reverse($all_users);
-        }
-
-        /**
-         * Page search results
-         */
-        $paged_entries = array_chunk($all_users, $per_page);
-        $users = $paged_entries[$page - 1];
-        $total_pages = ceil($total_entries / $per_page);
-    }
-
-    /**
-     * Build data for dataTables
-     */
-    $aaData = array();
+    $users = _build_contacts_filter();
     foreach ($users as $index => $user) {
-        $aaData[$index] = array(
-            @$user['uid'][0],
-            @$user['givenname'][0],
-            @$user['sn'][0],
-            @$user['o'][0],
-            @$user['ou'][0],
-            @$user['mail'],
-        );
+        $users[$index]['countries'] = $users[$index]['countries_post'] = $users[$index]['instruments'] = '';
 
         if (isset($user['iso2'])) {
             if ($user['iso2']['count'] > 1) {
                 $countries = "";
                 foreach ($user['iso2'] as $index => $country) {
                     if (is_numeric($index)) {
-                        $countries .= country_load($user['iso2'][$index])->name;
+                        $country_ob .= country_load($user['iso2'][$index]);
+                        $countries .= (is_object($country_ob) && property_exists($country_ob, 'name')) ? $country_ob->name : '';
                         if ($index < $user['iso2']['count']) {
                             $countries .= ", ";
                         }
                     }
                 }
 
-                $aaData[$index][] = $countries;
+                $users[$index]['countries'] = $countries;
             }else {
-                $country = country_load($user['iso2'][0])->name;
-                $aaData[$index][] = $country;
+                $country = country_load($user['iso2'][0]);
+                $users[$index]['countries'] = (is_object($country) && property_exists($country, 'name')) ? $country->name : '';
             }
-        }else {
-            $aaData[$index][] = '';
         }
 
         if (isset($user['cpiso2'])) {
@@ -190,13 +70,11 @@ function contacts_datatables_list() {
                     }
                 }
 
-                $aaData[$index][] = $countries;
+                $users[$index]['countries_post'] = $countries;
             }else {
                 $country = country_load($user['cpiso2'][0])->name;
-                $aaData[$index][] = $country;
+                $users[$index]['countries_post'] = $country;
             }
-        }else {
-            $aaData[$index][] = '';
         }
 
         $main_instrument = '';
@@ -223,30 +101,40 @@ function contacts_datatables_list() {
             }
         }
 
-        $aaData[$index][] = $conventions;
-        $aaData[$index][] = $main_instrument;
+        $users[$index]['instruments'] = $conventions;
     }
 
-
-    $response = array(
-        'sEcho' => $_GET['sEcho'],
-        'iTotalRecords' => $total_entries,
-        'iTotalDisplayRecords' => $total_entries,
-        'aaData' => $aaData,
-    );
-
-    echo json_encode($response);
-    drupal_exit();
+    return theme('contacts_list', array(
+        'page' => (isset($_GET['page']) && (is_numeric($_GET['page']))) ? $_GET['page'] : 1,
+        'per_page' => (isset($_GET['per_page']) && (is_numeric($_GET['per_page'])) && (in_array($_GET['per_page'], $per_page_options))) ? $_GET['per_page'] : 10,
+        'per_page_options' => $per_page_options,
+        'operator' => (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of',
+        'per_field_operator' => (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of',
+        'instrument' => $selected_instruments,
+        'countries' => isset($_GET['country']) ? $_GET['country'] : array(),
+        'instruments' => $mapped_instruments,
+        'regions' => isset($_GET['region']) ? $_GET['region'] : array(),
+        'mailing_list' => isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array(),
+        'availability' => (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "",
+        'person_status' => isset($_GET['person_status']) ? $_GET['person_status'] : array(),
+        'organization_status' => isset($_GET['organization_status']) ? $_GET['organization_status'] : array(),
+        'species_options' => $options["species"],
+        'meeting_options' => $options["meetings"],
+        'region_options' => $options["regions"],
+        'mailing_options' => $options["mailing"],
+        'org_status_options' => $options["status_organization"],
+        'person_status_options' => $options["status_person"],
+        'meeting' => isset($_GET['meeting']) ? $_GET['meeting'] : '',
+        'species' => isset($_GET['species']) ? $_GET['species'] : '',
+        'users' => $users,
+    ));
 }
-
 
 /**
  * Callback function for Contacts dataTables serverside processing.
  */
 function organizations_datatables_list() {
-    /**
-     * Map LDAP attributes for filtering
-     */
+    // Map LDAP attributes for filtering
     $columns = array(
         'oid',
         'o',
@@ -267,23 +155,17 @@ function organizations_datatables_list() {
         $instruments_names[strtolower($instrument_name)] = $instrument_name;
     }
 
-    /**
-     * Connect to LDAP server
-     */
+    // Connect to LDAP server
     $agent = CMSContacts::agent();
     if (!$agent->connected) {
         drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
     }else {
         $filter = _build_contacts_filter('cmsOrganization');
 
-        /**
-         * Search LDAP records based on filter
-         */
+        // Search LDAP records based on filter
         $result = $agent->search($agent->organization_dn, $filter);
 
-        /**
-         * Sort LDAP search results
-         */
+        // Sort LDAP search results
         if (isset($_GET['iSortCol_0'])) {
             $result = $agent->sort($columns[$_GET['iSortCol_0']]);
         }
@@ -291,27 +173,21 @@ function organizations_datatables_list() {
         $all_organizations = $agent->get_entries();
         $total_entries = $all_organizations['count'];
 
-        /**
-         * Remove 'count' element from users results;
-         * If sort direction is descending we don't want to include 'count' too
-         */
+        // Remove 'count' element from users results;
+        // If sort direction is descending we don't want to include 'count' too
         unset($all_organizations['count']);
 
         if (isset($_GET['sSortDir_0']) && ($_GET['sSortDir_0'] == 'desc')) {
             $all_organizations = array_reverse($all_organizations);
         }
 
-        /**
-         * Page search results
-         */
+        // Page search results
         $paged_entries = array_chunk($all_organizations, $per_page);
         $organizations = $paged_entries[$page - 1];
         $total_pages = ceil($total_entries / $per_page);
     }
 
-    /**
-     * Build data for dataTables
-     */
+    // Build data for dataTables
     $aaData = array();
     foreach ($organizations as $index => $organization) {
         $aaData[$index] = array(
@@ -437,13 +313,10 @@ function organizations_list() {
  *
  * Show contact details of a specified UID
  */
-function contacts_view($contact_id, $group) {
-    $agent = CMSContacts::agent();
+function contacts_view($contact_id) {
+    $contact = CMSContacts::get_contact_from_cache($contact_id);
 
-    $contact = $agent->search_user($contact_id);
-    $exists = CMSContacts::user_in_group($group, $contact, $agent);
-
-    if (empty($contact) || (!$exists)) {
+    if (empty($contact)) {
         drupal_not_found();
         drupal_exit();
     }
@@ -456,7 +329,6 @@ function contacts_view($contact_id, $group) {
     $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
     drupal_set_breadcrumb($breadcrumb);
 
-    $contact['instrument'] = $group;
     $contact['species'] = CMSContacts::get_contact_related_content($contact_id, 'species', 'field_species_experts');
     $contact['meetings'] = CMSContacts::get_contact_related_content($contact_id, 'meeting', 'field_meeting_participants');
 
@@ -572,9 +444,7 @@ function cms_contacts_form_submit($form, &$form_state) {
             watchdog('content', '@type: updated %title.', $watchdog_args, WATCHDOG_NOTICE, $contact_link);
             drupal_set_message(t('@type %title has been updated.', $t_args));
 
-            /**
-             * Redirect to contact page
-             */
+            // Redirect to contact page
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -609,9 +479,7 @@ function cms_contacts_form_submit($form, &$form_state) {
             watchdog('content', '@type: added %title.', $watchdog_args, WATCHDOG_NOTICE, $contact_link);
             drupal_set_message(t('@type %title has been created.', $t_args));
 
-            /**
-             * Redirect to contact page
-             */
+            // Redirect to contact page
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -628,7 +496,6 @@ function cms_contacts_form_submit($form, &$form_state) {
         drupal_set_message(t('The contact could not be saved.'), 'error');
     }
 
-    // Clear the page and block caches.
     cache_clear_all();
 }
 
@@ -660,9 +527,7 @@ function organization_form_submit($form, &$form_state) {
             watchdog('content', '@type: updated %title.', $watchdog_args, WATCHDOG_NOTICE, $organization_link);
             drupal_set_message(t('@type %title has been updated.', $t_args));
 
-            /**
-             * Redirect to contact page
-             */
+            // Redirect to organization page
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -679,9 +544,7 @@ function organization_form_submit($form, &$form_state) {
             watchdog('content', '@type: added %title.', $watchdog_args, WATCHDOG_NOTICE, $organization_link);
             drupal_set_message(t('@type %title has been created.', $t_args));
 
-            /**
-             * Redirect to contact page
-             */
+            // Redirect to organization page
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
@@ -698,7 +561,6 @@ function organization_form_submit($form, &$form_state) {
         drupal_set_message(t('The organization could not be saved.'), 'error');
     }
 
-    // Clear the page and block caches.
     cache_clear_all();
 }
 
@@ -729,17 +591,10 @@ function contacts_add($type) {
 /**
  * Contacts edit form
  */
-function contacts_edit($contact_id, $group) {
-    $current_profile = CMSUtils::get_current_profile();
-    if ($current_profile != 'cms') {
-        $group = $current_profile;
-    }
+function contacts_edit($contact_id) {
+    $contact = CMSContacts::get_contact_from_cache($contact_id);
 
-    $agent = CMSContacts::agent();
-    $contact = $agent->search_user($contact_id);
-    $exists = CMSContacts::user_in_group($group, $contact, $agent);
-
-    if (empty($contact) || (!$exists)) {
+    if (empty($contact)) {
         drupal_not_found();
         drupal_exit();
     }
@@ -747,7 +602,7 @@ function contacts_edit($contact_id, $group) {
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
     $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
-    $breadcrumb[] = l($contact['givenname'][0] . ' ' . $contact['sn'][0], ADMINISTRATION_PATH . 'contacts/item/' . $contact_id . '/' . $group . '/view');
+    $breadcrumb[] = l($contact['givenname'][0] . ' ' . $contact['sn'][0], ADMINISTRATION_PATH . 'contacts/item/' . $contact_id . '/view');
 
     drupal_set_breadcrumb($breadcrumb);
     $page_title = $contact['givenname'][0] . ' ' . $contact['sn'][0];
@@ -791,16 +646,9 @@ function organization_edit($organization_id, $group) {
  * Menu callback -- ask for confirmation of contact deletion
  */
 function contacts_delete_confirm($form, &$form_state, $contact_id, $group) {
-    $current_profile = CMSUtils::get_current_profile();
-    if ($current_profile != 'cms') {
-        $group = $current_profile;
-    }
+    $contact = CMSContacts::get_contact_from_cache($contact_id);
 
-    $agent = CMSContacts::agent();
-    $contact = $agent->search_user($contact_id);
-    $exists = CMSContacts::user_in_group($group, $contact, $agent);
-
-    if (empty($contact) || (!$exists)) {
+    if (empty($contact)) {
         drupal_not_found();
         drupal_exit();
     }
@@ -812,7 +660,7 @@ function contacts_delete_confirm($form, &$form_state, $contact_id, $group) {
 
     return confirm_form($form,
         t('Are you sure you want to delete %user contact?', array('%user' => $full_name)),
-        'contacts/item/' . $contact_id . '/' . $group . '/view',
+        ADMINISTRATION_PATH . 'contacts/item/' . $contact_id . '/view',
         t('This action cannot be undone.'),
         t('Delete'),
         t('Cancel')
@@ -857,14 +705,17 @@ function organization_delete_confirm($form, &$form_state, $organization_id, $gro
 function contacts_delete_confirm_submit($form, &$form_state) {
     if ($form_state['values']['confirm']) {
         $contact_id = $form['user_id']['#value'];
-        $group = $form['#group'];
-        $current_profile = CMSUtils::get_current_profile();
-        if ($current_profile != 'cms') {
-            $group = $current_profile;
-        }
+//        $agent = CMSContacts::agent();
 
-        $agent = CMSContacts::agent();
-        $contact = $agent->search_user($contact_id);
+        $dn = "uid=$contact_id," . variable_get(LDAP_PEOPLE_DN, '');
+
+        $contact = CMSContacts::get_contact_from_cache($dn);
+
+//        echo "<pre>";
+//        var_dump($contact);
+//        echo "</pre>";
+//        die();
+//        die();
         $exists = CMSContacts::user_in_group($group, $contact, $agent);
 
         if (empty($contact) || (!$exists)) {
@@ -873,12 +724,9 @@ function contacts_delete_confirm_submit($form, &$form_state) {
         }
 
         $full_name = $contact['givenname'][0] . ' ' . $full_name = $contact['sn'][0];
-        $dn = "uid=$contact_id," . $agent->people_dn;
         $agent->delete($dn);
 
-        /**
-         * Delete user from all assigned groups
-         */
+        // Delete user from all assigned groups
         if ($contact['conventions']['count']) {
             foreach ($contact['conventions'] as $index => $group_name) {
                 if (is_numeric($index)) {
@@ -944,9 +792,7 @@ function contacts_update_duplicates() {
                     $agent->search($agent->base_dn, $filter);
                     $results = $agent->get_entries();
                     if ($results['count'] == 1) {
-                        /**
-                         * Check if user already has assigned the instrument
-                         */
+                        // Check if user already has assigned the instrument
                         $exists = (in_array($profile, array_values($results[0]['conventions']))) ? TRUE : FALSE;
                         if (!$exists) {
                             $user_dn = "uid=" . $user->uid . ",ou=Users,o=CMS";
@@ -1009,34 +855,68 @@ function build_terms_options($vocabularies = array(), $existing_options = array(
 }
 
 /**
+ * Update exposed form options with selected instruments related options
+ *
+ * @param    string    $instrument_uuid
+ * @param    array     $options
+ * @param    array     $mailing_list
+ * @param    array     $status_person
+ * @param    array     $status_organization
+*/
+function _update_options($instrument_uuid, &$options, $mailing_list, $status_person, $status_organization) {
+    foreach ($mailing_list as $list_dn => $list) {
+        if ($list['uuid'][0] == $instrument_uuid) {
+            $options['mailing'][$list_dn] = $list['friendly_title'];
+        }
+    }
+
+    foreach ($status_person as $list_dn => $list) {
+        if ($list['uuid'][0] == $instrument_uuid) {
+            $options['status_person'][$list_dn] = $list['friendly_title'];
+        }
+    }
+
+    foreach ($status_organization as $status_dn => $status) {
+        if ($status['uuid'][0] == $instrument_uuid) {
+            $options['status_organization'][$status_dn] = $status['friendly_title'];
+        }
+    }
+}
+
+/**
  *
  * @param   array   $options
  */
 function _build_contacts_exposed_form_options($selected_instruments, &$options) {
-    $websites = CMSUtils::get_all_websites();
+    $instruments = CMSLegalInstrument::list_keyed_by_uuid();
+
+    $mailing_list = $status_person = $status_organization = array();
+    foreach ($instruments as $instrument_uuid => $instrument_title) {
+        $mailing_list[$instrument_uuid] = array();
+        $status_person[$instrument_uuid] = array();
+        $status_organization[$instrument_uuid] = array();
+    }
+
+    if (!($mailing_list_cache = cache_get(CMSContacts::$mailing_list_cache)) ||
+        !($status_person_cache = cache_get(CMSContacts::$status_person_cache)) ||
+        !($status_organization_cache = cache_get(CMSContacts::$status_organization_cache))) {
+        CMSContacts::update_ldap_taxonomies_cache();
+        $mailing_list = cache_get(CMSContacts::$mailing_list_cache)->data;
+        $status_person = cache_get(CMSContacts::$status_person_cache)->data;
+        $status_organization = cache_get(CMSContacts::$status_organization_cache)->data;
+    }else {
+        $mailing_list = $mailing_list_cache->data;
+        $status_person = $status_person_cache->data;
+        $status_organization = $status_organization_cache->data;
+    }
 
     if (empty($selected_instruments) || ($selected_instruments == 'null') || ($selected_instruments[0] == '')) {
-        foreach ($websites as $name => $website) {
-            $remote_species = api_species_list('species_from_cache', $name);
-            $options['species'] = array_merge($options['species'], $remote_species);
-            $remote_meetings = api_meeting_list('cache', $name);
-            $options['meetings'] = array_merge($options['meetings'], $remote_meetings);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($name);
-            $options['mailing'] = build_terms_options($vocabularies, $options['mailing'], VOC_CONTACTS_MAILING, $name, $website['title']);
-            $options['regions'] = build_terms_options($vocabularies, $options['regions'], VOC_REGION, $name, $website['title']);
-            $options['status_organization'] = build_terms_options($vocabularies, $options['status_organization'], VOC_STATUS_ORGANIZATION, $name, $website['title']);
-            $options['status_person'] = build_terms_options($vocabularies, $options['status_person'], VOC_STATUS_PERSON, $name, $website['title']);
+        foreach (array_keys($instruments) as $instrument_uuid) {
+            _update_options($instrument_uuid, $options, $mailing_list, $status_person, $status_organization);
         }
     }else {
-        foreach ($selected_instruments as $instrument) {
-            $title = isset($websites[$instrument]) ? $websites[$instrument]['title'] : '';
-            $options["species"] = api_species_list('species_from_cache', $instrument);
-            $options["meetings"] = api_meeting_list('cache', $instrument);
-            $vocabularies = contacts_list_vocabulary_terms_from_cache($instrument);
-            $options["mailing"] = build_terms_options($vocabularies, $options["mailing"], VOC_CONTACTS_MAILING, $instrument, $title);
-            $options["regions"] = build_terms_options($vocabularies, $options["regions"], VOC_REGION, $instrument, $title);
-            $options["status_organization"] = build_terms_options($vocabularies, $options["status_organization"], VOC_STATUS_ORGANIZATION, $instrument, $title);
-            $options["status_person"] = build_terms_options($vocabularies, $options["status_person"], VOC_STATUS_PERSON, $instrument, $title);
+        foreach ($selected_instruments as $instrument_uuid) {
+            _update_options($instrument_uuid, $options, $mailing_list, $status_person, $status_organization);
         }
     }
 }
@@ -1046,130 +926,243 @@ function _build_contacts_exposed_form_options($selected_instruments, &$options) 
  * Build LDAP filter for Contacts
  *
  * @param   string   $profile   Convention to look for
- * @return  strgin   $filter
+ * @return  string   $filter
  */
 function _build_contacts_filter($objectClass = 'cmsContact') {
+//    $time_start = microtime(true);
     $selected_operator = (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of';
     $selected_per_field_operator = (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of';
     $countries = isset($_GET['country']) ? $_GET['country'] : '';
     $regions = isset($_GET['region']) ? $_GET['region'] : '';
-    $mailing_lists = isset($_GET['mailing_list']) ? $_GET['mailing_list'] : '';
+    $mailing_lists = isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array();
     $availability = (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "";
-    $person_statuses = isset($_GET['person_status']) ? $_GET['person_status'] : '';
-    $organization_statuses = isset($_GET['organization_status']) ? $_GET['organization_status'] : '';
-    $species = isset($_GET['species']) ? $_GET['species'] : '';
-    $meeting = isset($_GET['meeting']) ? $_GET['meeting'] : '';
+    $person_statuses = isset($_GET['person_status']) ? $_GET['person_status'] : array();
+    $organization_statuses = isset($_GET['organization_status']) ? $_GET['organization_status'] : array();
+    $species = isset($_GET['species']) ? $_GET['species'] : array();
+    $meeting = isset($_GET['meeting']) ? $_GET['meeting'] : array();
     $search_query = (isset($_GET['sSearch']) && !empty($_GET['sSearch'])) ? $_GET['sSearch'] : '';
-    $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : '';
-    if (!empty($selected_instruments) && ($selected_instruments != 'null')) {
-        $selected_instruments = explode(',', $selected_instruments);
-    }
+    $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
 
     $species_options = $meeting_options = $region_options = $mailing_options = $org_status_options = $person_status_options = array();
-    $options = array('species', 'meetings', 'regions', 'mailing', 'status_organization', 'status_person');
+    $options = array('species' => array(),
+                     'meetings' => array(),
+                     'regions' => array(),
+                     'mailing' => array(),
+                     'status_organization' => array(),
+                     'status_person' => array()
+    );
     _build_contacts_exposed_form_options($selected_instruments, $options);
 
     $operator = ($selected_operator == 'is_all_of') ? '&' : '|';
     $per_field_operator = ($selected_per_field_operator == 'is_all_of') ? '&' : '|';
 
-    if (!empty($selected_instruments) && ($selected_instruments != 'null')) {
-        if (count($selected_instruments) > 1) {
-            $filter = "(" . $per_field_operator;
-            foreach ($selected_instruments as $instrument) {
-                $filter .= "(conventions=" . $instrument . ")";
-            }
-            $filter .= ")";
-        }else {
-            $filter = "(conventions=" . $selected_instruments[0] . ")";
+    $instruments_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache');
+    $users_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$users_cache, 'update_ldap_users_cache');
+    $mailing_lists_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache');
+    $status_person_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache');
+    $status_organization_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
+    $users = array();
+
+    $instruments_members = array();
+    if ((!empty($selected_instruments)) && ($selected_instruments != 'null') && ($selected_instruments != array(''))) {
+        foreach ($selected_instruments as $index => $instrument_uuid) {
+            $key = "uuid=$instrument_uuid,o=CMS";
+            $members = $instruments_cache[$key]['uniquemember'];
+            CMSUtils::unset_count_key($members);
+            $instruments_members = array_merge($instruments_members, $members);
         }
     }else {
-        $filter = "(conventions=*)";
+        foreach ($instruments_cache as $instrument_dn => $instrument) {
+            $members = $instrument['uniquemember'];
+            CMSUtils::unset_count_key($members);
+            $instruments_members = array_merge($instruments_members, $members);
+        }
+    }
+    $instruments_members = array_unique($instruments_members);
+
+    $mailing_lists_members = array();
+    if (!empty($mailing_lists) && ($mailing_lists != 'null')) {
+        foreach($mailing_lists as $index => $mailing_list_dn) {
+            if (array_key_exists($mailing_list_dn, $mailing_lists_cache)) {
+                $members = $mailing_lists_cache[$mailing_list_dn]['uniquemember'];
+                CMSUtils::unset_count_key($members);
+                $mailing_lists_members = array_merge($mailing_lists_members, $members);
+            }
+        }
+    }else {
+        foreach ($mailing_lists_cache as $mailing_list_dn => $mailing_list) {
+            $members = $mailing_list['uniquemember'];
+            CMSUtils::unset_count_key($members);
+            $mailing_lists_members = array_merge($mailing_lists_members, $members);
+        }
+    }
+    $mailing_lists_members = array_unique($mailing_lists_members);
+
+    $status_person_members = array();
+    if (!empty($person_statuses) && ($person_statuses!= 'null')) {
+        // Get users from selected mailing lists
+        foreach($person_statuses as $index => $status_person_dn) {
+            if (array_key_exists($status_person_dn, $status_person_cache)) {
+                $members = $status_person_cache[$status_person_dn]['uniquemember'];
+                CMSUtils::unset_count_key($members);
+                $status_person_members = array_merge($status_person_members, $members);
+            }
+        }
+    }else {
+        foreach ($status_person_cache as $status_person_dn => $status_person) {
+            $members = $status_person['uniquemember'];
+            CMSUtils::unset_count_key($members);
+            $status_person_members = array_merge($status_person_members, $members);
+        }
+    }
+    $status_person_members = array_unique($status_person_members);
+
+    $status_organization_members = array();
+    if (!empty($organization_statuses) && ($organization_statuses != 'null')) {
+        // Get users from selected mailing lists
+        foreach($organization_statuses as $index => $organization_status_dn) {
+            if (array_key_exists($organization_status_dn, $status_organization_cache)) {
+                $members = $status_organization_cache[$organization_status_dn]['uniquemember'];
+                CMSUtils::unset_count_key($members);
+                $status_organization_members = array_merge($status_organization_members, $members);
+            }
+        }
+    }else {
+        foreach ($status_organization_cache as $status_person_dn => $status_organization) {
+            $members = $status_organization['uniquemember'];
+            CMSUtils::unset_count_key($members);
+            $status_organization_members = array_merge($status_organization_members, $members);
+        }
+    }
+    $status_organization_members = array_unique($status_organization_members);
+
+    $users_dns = $instruments_members;
+    if (!empty($mailing_lists_members)) {
+        $users_dns = array_filter(array_intersect($users_dns, $mailing_lists_members));
     }
 
-    if (!empty($regions) || (!empty($countries) && ($countries != 'null')) || !empty($search_query) || !empty($availability) || (!empty($mailing_lists) && ($mailing_lists != 'null')) ||
-        !empty($organization_statuses) || !empty($person_statuses) || (!empty($species) && ($species != 'null'))) {
-        $filter = "(" . $operator . $filter;
-
-        if (!empty($countries) && ($countries != 'null')) {
-            $countries = explode(',', $countries);
-            $filter .= "(" . $per_field_operator;
-            foreach($countries as $country) {
-                $filter .= "(|(iso2=" . strtolower($country) . ")(cpIso2=" . strtolower($country) . "))";
-            }
-            $filter .= ")";
-        }
-
-        if (!empty($regions) && ($regions != 'null')) {
-            $regions = explode(',', $regions);
-            $filter .= "(" . $per_field_operator;
-            foreach ($regions as $region) {
-                if (array_key_exists($region, $region_options)) {
-                    $filter .= "(region=" . $region_options[$region] . ")";
-                }
-            }
-            $filter .= ")";
-        }
-
-        if (!empty($availability)) {
-            $filter .= "(cmsAvailability=" . $availability . ")";
-        }
-
-        if (!empty($mailing_lists) && ($mailing_lists != 'null')) {
-            $mailing_lists = explode(',', $mailing_lists);
-            $filter .= "(" . $per_field_operator;
-            foreach ($mailing_lists as $mailing_list) {
-                if (array_key_exists($mailing_list, $mailing_options)) {
-                    $filter .= "(mailingLists=" . $mailing_options[$mailing_list] . ")";
-                }
-            }
-            $filter .= ")";
-        }
-
-        if (!empty($person_statuses) && ($person_statuses != 'null')) {
-            $person_statuses = explode(',', $person_statuses);
-            $filter .= "(" . $per_field_operator;
-            foreach ($person_statuses as $person_status) {
-                if (array_key_exists($person_status, $person_status_options)) {
-                    $person_status = preg_replace('/([\(\)])/',"\\\\$1", $person_status_options[$person_status]);
-                    $filter .= "(statusPerson=" . $person_status . ")";
-                }
-            }
-            $filter .= ")";
-        }
-
-        if (!empty($organization_statuses) && ($organization_statuses != 'null')) {
-            $organization_statuses = explode(',', $organization_statuses);
-            $filter .= "(" . $per_field_operator;
-            foreach ($organization_statuses as $organization_status) {
-                if (array_key_exists($organization_status, $org_status_options)) {
-                    $organization_status = preg_replace('/([\(\)])/',"\\\\$1", $org_status_options[$organization_status]);
-                    $filter .= "(statusOrganization=" . $organization_status . ")";
-                }
-            }
-
-            $filter .= ")";
-        }
-
-        if (array_key_exists($species, $species_options)) {
-            $experts = $species_options[$species]->experts_dns;
-            if (!empty($experts)) {
-                $filter .= "(" . $per_field_operator;
-                foreach ($experts as $index => $expert) {
-                    $filter .= "(uid=" . $expert . ")";
-                }
-                $filter .= ")";
-            }
-        }
-
-        if (!empty($search_query)) {
-            $filter .= "(|(sn=*" . $search_query . "*)(givenName=*" . $search_query . "*)(o=*" . $search_query . "*)(ou=*" . $search_query . "*)(st=*" . $search_query . "*)(mail=*" . $search_query . "*)(additionalEmails=*" . $search_query . "*)(personalEmail=*" . $search_query . "*)(website=*" . $search_query . "*))";
-        }
-
-        $filter .= ")";
+    if (!empty($status_person_members)) {
+        $users_dns = array_filter(array_intersect($users_dns, $status_person_members));
     }
 
-    $filter = "(&(objectClass=" . $objectClass . ")" . $filter . ")";
-    return $filter;
+    if (!empty($status_organization_members)) {
+        $users_dns = array_filter(array_intersect($users_dns, $status_organization_members));
+    }
+
+    foreach ($users_dns as $index => $user_dn) {
+        if (array_key_exists($user_dn, $users_cache)) {
+            $users[] = $users_cache[$user_dn];
+        }
+    }
+
+//    $time_end = microtime(true);
+//    $execution_time = ($time_end - $time_start);
+//    echo '<b>Total Execution Time:</b> ' . $execution_time . ' Seconds';
+
+//    $users['count'] = count($users);
+    return $users;
+//    foreach ($instruments_members as $member_dn) {
+//        echo "<pre>";
+//        var_dump($member_dn);
+//        echo "</pre>";
+//        die();
+//    }
+//
+//    foreach ($cache_lists as $list) {
+//        CMSUtils::unset_count_key(array_filter($list));
+//        $members = $list['uniquemember'];
+//
+//        foreach ($users as $user_dn => $user) {
+//            if (!in_array($user, $members)) {
+//                unset($users[$user_dn]);
+//            }
+//        }
+//    }
+//
+//    if (!empty($regions) || (!empty($countries) && ($countries != 'null')) || !empty($search_query) || !empty($availability) || (!empty($mailing_lists) && ($mailing_lists != 'null')) ||
+//        !empty($organization_statuses) || !empty($person_statuses) || (!empty($species) && ($species != 'null'))) {
+//        $filter = "(" . $operator . $filter;
+//
+//        if (!empty($countries) && ($countries != 'null')) {
+//            $countries = explode(',', $countries);
+//            $filter .= "(" . $per_field_operator;
+//            foreach($countries as $country) {
+//                $filter .= "(|(iso2=" . strtolower($country) . ")(cpIso2=" . strtolower($country) . "))";
+//            }
+//            $filter .= ")";
+//        }
+//
+//        if (!empty($regions) && ($regions != 'null')) {
+//            $regions = explode(',', $regions);
+//            $filter .= "(" . $per_field_operator;
+//            foreach ($regions as $region) {
+//                if (array_key_exists($region, $region_options)) {
+//                    $filter .= "(region=" . $region_options[$region] . ")";
+//                }
+//            }
+//            $filter .= ")";
+//        }
+//
+//        if (!empty($availability)) {
+//            $filter .= "(cmsAvailability=" . $availability . ")";
+//        }
+//
+//        if (!empty($mailing_lists) && ($mailing_lists != 'null')) {
+//            $mailing_lists = explode(',', $mailing_lists);
+//            $filter .= "(" . $per_field_operator;
+//            foreach ($mailing_lists as $mailing_list) {
+//                if (array_key_exists($mailing_list, $mailing_options)) {
+//                    $filter .= "(mailingLists=" . $mailing_options[$mailing_list] . ")";
+//                }
+//            }
+//            $filter .= ")";
+//        }
+//
+//        if (!empty($person_statuses) && ($person_statuses != 'null')) {
+//            $person_statuses = explode(',', $person_statuses);
+//            $filter .= "(" . $per_field_operator;
+//            foreach ($person_statuses as $person_status) {
+//                if (array_key_exists($person_status, $person_status_options)) {
+//                    $person_status = preg_replace('/([\(\)])/',"\\\\$1", $person_status_options[$person_status]);
+//                    $filter .= "(statusPerson=" . $person_status . ")";
+//                }
+//            }
+//            $filter .= ")";
+//        }
+//
+//        if (!empty($organization_statuses) && ($organization_statuses != 'null')) {
+//            $organization_statuses = explode(',', $organization_statuses);
+//            $filter .= "(" . $per_field_operator;
+//            foreach ($organization_statuses as $organization_status) {
+//                if (array_key_exists($organization_status, $org_status_options)) {
+//                    $organization_status = preg_replace('/([\(\)])/',"\\\\$1", $org_status_options[$organization_status]);
+//                    $filter .= "(statusOrganization=" . $organization_status . ")";
+//                }
+//            }
+//
+//            $filter .= ")";
+//        }
+//
+//        if (array_key_exists($species, $species_options)) {
+//            $experts = $species_options[$species]->experts_dns;
+//            if (!empty($experts)) {
+//                $filter .= "(" . $per_field_operator;
+//                foreach ($experts as $index => $expert) {
+//                    $filter .= "(uid=" . $expert . ")";
+//                }
+//                $filter .= ")";
+//            }
+//        }
+//
+//        if (!empty($search_query)) {
+//            $filter .= "(|(sn=*" . $search_query . "*)(givenName=*" . $search_query . "*)(o=*" . $search_query . "*)(ou=*" . $search_query . "*)(st=*" . $search_query . "*)(mail=*" . $search_query . "*)(additionalEmails=*" . $search_query . "*)(personalEmail=*" . $search_query . "*)(website=*" . $search_query . "*))";
+//        }
+//
+//        $filter .= ")";
+//    }
+//
+//    $filter = "(&(objectClass=" . $objectClass . ")" . $filter . ")";
+//    return $filter;
 }
 
 function _prepare_contact_details(&$data, $user) {
@@ -1213,5 +1206,281 @@ function _prepare_contact_details(&$data, $user) {
         $data[] = implode('; ', $species);
     }else {
         $data[] = '';
+    }
+}
+
+
+/**
+ * Add contacts to groups
+ */
+function cms_contacts_update_groups() {
+    $time_start = microtime(true);
+    $contacts = array();
+    $instruments_mapping = array(
+        'marine turtles iosea' => 'IOSEA Marine Turtles',
+        'birds of prey (raptors)' => 'Raptors (Birds of Prey)',
+        'gorillas' => 'Gorilla Agreement',
+        'pacific island cetaceans' => 'Pacific Islands Cetaceans',
+        'great bustard' => 'Middle-European Great Bustard',
+        'west african elephant' => 'West African Elephants',
+        'marine turtles africa' => 'Western African Aquatic Mammals',
+    );
+
+    if($cached = cache_get('ldap_contacts', 'cache'))  {
+        $contacts = $cached->data;
+    }
+    if(empty($contacts)) {
+        $agent = CMSContacts::agent();
+        $result = $agent->search($agent->people_dn, "(objectClass=cmsContact)");
+        $entries = $agent->get_entries();
+
+        if (is_array($entries) && array_key_exists('count', $entries)) {
+            unset($entries['count']);
+
+            foreach ($entries as $index => $entry) {
+                $contacts[] = $entry;
+            }
+
+            cache_set('ldap_contacts', $contacts, 'cache', 60 * 60);
+        }
+    }
+
+    $unidentified_instruments = array();
+    foreach ($contacts as $contact) {
+        if (isset($contact['conventions'])) {
+            $conventions = $contact['conventions'];
+            unset($conventions['count']);
+            foreach ($conventions as $index => $convention) {
+                if (strpos($convention, '/') !== FALSE) {
+                    $parts = preg_split('/\//', $convention);
+                    unset($conventions[$index]);
+                    foreach ($parts as $part) {
+                        $conventions[] = $part;
+                    }
+                }
+            }
+
+            foreach ($conventions as $convention) {
+                if (array_key_exists($convention, $instruments_mapping)) {
+                    $convention = $instruments_mapping[$convention];
+                }
+
+                $instrument = CMSLegalInstrument::get_by_name($convention);
+                if (!$instrument && !in_array($convention, $unidentified_instruments)) {
+                    $unidentified_instruments[] = $convention;
+                }else {
+                    $uuid = $instrument->uuid;
+                }
+
+                $filter = "(&(objectClass=cmsInstrument)(uuid=$uuid))";
+                if (!isset($agent)) {
+                    $agent = CMSContacts::agent();
+                }
+
+                $result = $agent->search($agent->base_dn, $filter);
+                $entries = $agent->get_entries();
+                if ($entries && array_key_exists('count', $entries)) {
+                    $agent->add_to_group($entries[0]['dn'], array('uniqueMember' =>  $contact['dn']));
+                }
+            }
+        }
+    }
+
+    if ($unidentified_instruments) {
+        echo "Unidentifed instruments: <br />";
+        echo "<pre>";
+        var_dump($unidentified_instruments);
+        echo "</pre>";
+    }
+
+    $time_end = microtime(true);
+    $execution_time = ($time_end - $time_start);
+    echo '<b>Total Execution Time:</b> '.$execution_time.' seconds';
+}
+
+/**
+ * Generate LDIF for initial groups
+ */
+function cms_contacts_generate_initial_ldif() {
+    $default_instruments = array(
+        'CMS' => 'f0b4ae05-8d04-4814-b01f-064c94da5a23',
+        'AEWA' => 'dbce2ddc-648e-4302-be84-47d0aa36ad66',
+        'EUROBATS' => '99a489ec-64ff-4b0e-940b-d489d0b8e99a',
+        'ASCOBANS' => '0b41fac4-6198-439a-a335-f7405f352681',
+    );
+
+    $profile = CMSUtils::get_current_profile();
+    $websites = CMSUtils::get_all_websites();
+    if (!array_key_exists($profile, $websites) || !array_key_exists('title', $websites[$profile])) {
+        echo "Unknown instrument title";
+        drupal_exit();
+    }
+    $instrument_title = $websites[$profile]['title'];
+
+    $instruments = node_load_multiple(array(), array('type' => CMSLegalInstrument::$bundle));
+    foreach ($instruments as $instrument) {
+        $ldif = "
+            dn: uuid={$instrument->uuid},o=CMS<br />
+            objectClass: top<br />
+            objectClass: cmsInstrument<br />
+            uuid: {$instrument->uuid}<br />
+            cn: {$instrument->title}<br />
+            description: {$instrument->field_instrument_name[$instrument->language][0]['value']}<br />
+            uniqueMember:<br /><br />
+            dn: ou=Mailing List,uuid={$instrument->uuid},o=CMS<br />
+            objectClass: top<br />
+            objectClass: organizationalUnit<br />
+            ou: Mailing List<br /><br />
+            dn: ou=Status Person,uuid={$instrument->uuid},o=CMS<br />
+            objectClass: top<br />
+            objectClass: organizationalUnit<br />
+            ou: Status Person<br /><br />
+            dn: ou=Status Organization,uuid={$instrument->uuid},o=CMS<br />
+            objectClass: top<br />
+            objectClass: organizationalUnit<br />
+            ou: Status Organization<br /><br />
+        ";
+//        echo $ldif;
+    }
+
+    $vocabularies = array(
+        CMS_MAILING => VOC_CONTACTS_MAILING,
+        CMS_STATUS_ORGANIZATION => VOC_STATUS_ORGANIZATION,
+        CMS_STATUS_PERSON => VOC_STATUS_PERSON,
+    );
+
+    foreach ($vocabularies as $type => $vocabulary) {
+        $ou = "";
+        switch($type) {
+            case CMS_MAILING:
+                $ou = "Mailing List";
+                break;
+            case CMS_STATUS_ORGANIZATION:
+                $ou = "Status Organization";
+                break;
+            case CMS_STATUS_PERSON:
+                $ou = "Status Person";
+                break;
+        }
+
+        $vocabulary = taxonomy_vocabulary_machine_name_load($vocabulary);
+        if ($vocabulary) {
+            $terms = taxonomy_get_tree($vocabulary->vid);
+            if ($terms) {
+                foreach ($terms as $index => $term) {
+
+                    $ldif = "
+                        dn: cn={$term->name},ou=$ou,uuid={$default_instruments[$instrument_title]},o=CMS<br />
+                        objectClass: top<br />
+                        objectClass: {$type}<br />
+                        cn: {$term->name}<br />
+                        instrumentName: {$instrument_title}<br />
+                        uuid: {$default_instruments[$instrument_title]}<br />
+                        uniqueMember:<br /><br />
+                    ";
+                    echo $ldif;
+                }
+            }
+        }
+    }
+
+    die();
+}
+
+function cms_contacts_update_mailing() {
+    $users = CMSContacts::get_or_create_ldap_cache(CMSContacts::$users_cache, 'update_ldap_users_cache');
+    $agent = CMSContacts::agent();
+    $unidentified_lists = array();
+    foreach ($users as $index => $user) {
+        if (array_key_exists('mailinglists', $user)) {
+            $mailing_lists = $user['mailinglists'];
+            CMSUtils::unset_count_key($mailing_lists);
+            if ($mailing_lists) {
+                foreach ($mailing_lists as $list_name) {
+                    $agent->search($agent->base_dn, "(&(objectClass=cmsMailingList)(cn=$list_name))");
+                    $lists = $agent->get_entries();
+                    CMSUtils::unset_count_key($lists);
+                    if ($lists) {
+                        foreach ($lists as $count => $list) {
+                            $agent->add_to_group($list['dn'], array('uniqueMember' =>  $user['dn']));
+                        }
+                    }else {
+                        $unidentified_lists[] = $list_name;
+                    }
+                }
+            }
+        }
+    }
+
+    if ($unidentified_lists) {
+        echo "<pre>";
+        var_dump($unidentified_lists);
+        echo "</pre>";
+        die();
+    }
+}
+
+function cms_contacts_update_statuses() {
+    $status_person = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache');
+    $status_organization = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
+    $users = CMSContacts::get_or_create_ldap_cache(CMSContacts::$users_cache, 'update_ldap_users_cache');
+    $agent = CMSContacts::agent();
+
+    $unidentied_statuses = array(
+        'statusPerson' => array(),
+        'statusOrganization' => array(),
+    );
+
+    foreach ($users as $index => $user) {
+        if (array_key_exists('statusperson', $user)) {
+            $statuses = $user['statusperson'];
+            CMSUtils::unset_count_key($statuses);
+            if ($statuses) {
+                foreach ($statuses as $status) {
+                    $agent->search($agent->base_dn, "(&(objectClass=cmsStatusPerson)(cn=$status))");
+                    $ldap_statuses = $agent->get_entries();
+                    CMSUtils::unset_count_key($ldap_statuses);
+                    if ($ldap_statuses) {
+                        foreach ($ldap_statuses as $count => $ldap_status) {
+                            $agent->add_to_group($ldap_status['dn'], array('uniqueMember' =>  $user['dn']));
+                        }
+                    }else {
+                        $unidentied_statuses['statusPerson'][] = array(
+                            $status,
+                            $user['conventions']
+                        );
+                    }
+                }
+            }
+        }
+
+        if (array_key_exists('statusorganization', $user)) {
+            $statuses = $user['statusorganization'];
+            CMSUtils::unset_count_key($statuses);
+            if ($statuses) {
+                foreach ($statuses as $status) {
+                    $agent->search($agent->base_dn, "(&(objectClass=cmsStatusOrganization)(cn=$status))");
+                    $ldap_statuses = $agent->get_entries();
+                    CMSUtils::unset_count_key($ldap_statuses);
+                    if ($ldap_statuses) {
+                        foreach ($ldap_statuses as $count => $ldap_status) {
+                            $agent->add_to_group($ldap_status['dn'], array('uniqueMember' =>  $user['dn']));
+                        }
+                    }else {
+                        $unidentied_statuses['statusOrganization'][] = array(
+                            $status,
+                            $user['conventions']
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    if ($unidentied_statuses) {
+        echo "<pre>";
+        var_dump($unidentied_statuses);
+        echo "</pre>";
+        die();
     }
 }
