@@ -79,25 +79,19 @@ function contacts_list() {
 
         $main_instrument = '';
         $aaData[$index][] = (isset($user['st']) && !empty($user['st'])) ? $user['st'][0] : '';
-        if (isset($user['conventions'])) {
-            if ($user['conventions']['count'] > 1) {
-                $conventions = "";
-                foreach ($user['conventions'] as $convention_index => $convention) {
-                    if ((is_numeric($convention_index)) && (isset($instruments_names[$convention]))) {
-                        if ($main_instrument == '') {
-                            $main_instrument = $convention;
-                        }
 
-                        $conventions .= $instruments_names[$convention];
-                        if (($convention_index + 1) < $user['conventions']['count']) {
-                            $conventions .= ", ";
-                        }
+        $contact_instruments = CMSContacts::get_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $user['dn'], '');
+        $instruments_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache');
+
+        $conventions = '';
+        if ($contact_instruments) {
+            foreach ($contact_instruments as $instrument_index => $instrument_dn) {
+                if (array_key_exists($instrument_dn, $instruments_cache) && array_key_exists('cn', $instruments_cache[$instrument_dn])) {
+                    $conventions .= $instruments_cache[$instrument_dn]['cn'][0];
+                    if (($instrument_index + 1) < count($contact_instruments)) {
+                        $conventions .= ", ";
                     }
                 }
-            }else {
-                $convention = $user['conventions'][0];
-                $main_instrument = $convention;
-                $conventions = (isset($instruments_names[$convention])) ? $instruments_names[$convention] : '';
             }
         }
 
