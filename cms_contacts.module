@@ -1407,6 +1407,24 @@ class CMSContacts extends CMSBase {
         return $lists_dns;
     }
 
+    public static function get_friendly_title_groups_for_contact($cid, $callback, $dn,  $site_uuid = '') {
+        $cache = CMSContacts::get_or_create_ldap_cache($cid, $callback);
+        $lists_dns = array();
+        foreach ($cache as $index => $item) {
+            if (!$site_uuid) {
+                if (in_array($dn, $item['uniquemember']) && (!in_array($item['dn'], $lists_dns))) {
+                    $lists_dns[] = $item['cn'][0];
+                }
+            }else {
+                if (in_array($dn, $item['uniquemember']) && (!in_array($item['dn'], $lists_dns)) && ($site_uuid == $item['uuid'][0])) {
+                    $lists_dns[] = $item['cn'][0];
+                }
+            }
+        }
+
+        return $lists_dns;
+    }
+
     public static function remove_contact_from_groups($agent, $dn = '', $site_uuid) {
         $contact_mailing_lists = self::get_groups_for_contact(self::$mailing_list_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
         $contact_statuses_person = self::get_groups_for_contact(self::$status_person_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
