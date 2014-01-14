@@ -43,7 +43,7 @@ function contacts_list() {
                 $countries = "";
                 foreach ($user['iso2'] as $index => $country) {
                     if (is_numeric($index)) {
-                        $country_ob .= country_load($user['iso2'][$index]);
+                        $country_ob = country_load($user['iso2'][$index]);
                         $countries .= (is_object($country_ob) && property_exists($country_ob, 'name')) ? $country_ob->name : '';
                         if ($index < $user['iso2']['count']) {
                             $countries .= ", ";
@@ -77,21 +77,17 @@ function contacts_list() {
             }
         }
 
-        $main_instrument = '';
         $aaData[$index][] = (isset($user['st']) && !empty($user['st'])) ? $user['st'][0] : '';
 
-        $contact_instruments = CMSContacts::get_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $user['dn'], '');
-        $instruments_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache');
+        $contact_instruments = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $user['dn']);
 
         $conventions = '';
         if ($contact_instruments) {
-            foreach ($contact_instruments as $instrument_index => $instrument_dn) {
-                if (array_key_exists($instrument_dn, $instruments_cache) && array_key_exists('cn', $instruments_cache[$instrument_dn])) {
-                    $conventions .= $instruments_cache[$instrument_dn]['cn'][0];
+            foreach ($contact_instruments as $instrument_index => $instrument_name) {
+                    $conventions .= $instrument_name;
                     if (($instrument_index + 1) < count($contact_instruments)) {
                         $conventions .= ", ";
                     }
-                }
             }
         }
 
@@ -1222,6 +1218,7 @@ function cms_contacts_update_groups() {
     $instruments_mapping = array(
         'marine turtles iosea' => 'IOSEA Marine Turtles',
         'birds of prey (raptors)' => 'Raptors (Birds of Prey)',
+        'raptors (birds of prey)' => 'Birds of Prey (Raptors)',
         'gorillas' => 'Gorilla Agreement',
         'pacific island cetaceans' => 'Pacific Islands Cetaceans',
         'great bustard' => 'Middle-European Great Bustard',
