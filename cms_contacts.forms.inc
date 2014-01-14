@@ -20,12 +20,19 @@
  * @return  array   $form
  */
 function cms_contacts_form($form, &$form_state, $contact) {
-    if (!isset($form_state['contact'])) {
-        $form['#contacts_edit_form'] = false;
-        $form_state['contact'] = $contact;
+    if (!empty($contact)) {
+        if (array_key_exists('dn', $contact) && (!empty($contact['dn']))) {
+            $contact_dn = $contact['dn'];
+        }
+        $form_state['#contacts_edit_form'] = true;
     }else {
-        $form['#contacts_edit_form'] = true;
-        $contact = $form_state['contact'];
+        $form['#contacts_edit_form'] = false;
+        $contact_dn = '';
+    }
+
+    $site_uuid = variable_get('site_uuid', '');
+    if (!$site_uuid) {
+        drupal_set_message(t('Unable to determine site UUID! Please contact the site administrator.', 'error'));
     }
 
     $form['#attributes']['class'][] = 'contacts-form';
@@ -184,8 +191,10 @@ function cms_contacts_form($form, &$form_state, $contact) {
     );
 
     $person_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache');
-    $contact_statuses = CMSContacts::contact_map_terms($contact, 'statusperson', $person_statuses);
-
+    $contact_statuses = array();
+    if ($contact_dn) {
+        $contact_statuses = CMSContacts::get_groups_for_contact(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache', $contact_dn, $site_uuid);
+    }
     $form['person_status'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -195,13 +204,18 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#size' => 5,
     );
 
-    $instruments_options = CMSLegalInstrument::cms_instruments_names();
+    $instruments_options = CMSContacts::create_instruments_form_options();
+    $contact_instruments = array();
+    if ($contact_dn) {
+        $contact_instruments = CMSContacts::get_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $contact_dn);
+    }
+
     $form['conventions'] = array(
         '#type' => 'select',
         '#required' => TRUE,
         '#multiple' => TRUE,
         '#title' => t('CMS Instruments'),
-        '#default_value' => isset($contact['conventions']) ? $contact['conventions'] : '',
+        '#default_value' => isset($contact_instruments) ? $contact_instruments : '',
         '#options' => $instruments_options,
         '#size' => 5,
     );
@@ -228,7 +242,10 @@ function cms_contacts_form($form, &$form_state, $contact) {
     );
 
     $organization_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
-//    $contact_org_statuses = CMSContacts::contact_map_terms($contact, 'statusorganization', $organization_statuses);
+    $contact_org_statuses = array();
+    if ($contact_dn) {
+        $contact_org_statuses = CMSContacts::get_groups_for_contact(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache', $contact_dn, $site_uuid);
+    }
     $form['organization_status'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
@@ -246,10 +263,11 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#maxlength' => 512,
     );
 
-//    $mailing_lists = CMSUtils::vocabulary_get_terms(VOC_CONTACTS_MAILING);
-//    $contact_mailing_lists = CMSContacts::contact_map_terms($contact, 'mailinglists', $mailing_lists);
     $mailing_lists = CMSContacts::create_form_options_for_field(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache');
-
+    $contact_mailing_lists = array();
+    if ($contact_dn) {
+        $contact_mailing_lists = CMSContacts::get_groups_for_contact(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache', $contact_dn, $site_uuid);
+    }
     $form['mailing_list'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,

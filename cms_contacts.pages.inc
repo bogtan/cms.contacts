@@ -411,92 +411,93 @@ function organization_form_validate($form, &$form_state) {
  * Contacts add form submit handler
  */
 function cms_contacts_form_submit($form, &$form_state) {
-    $agent = CMSContacts::agent();
     $edit = (isset($form['#contact']) && (!empty($form['#contact']))) ? TRUE : FALSE;
 
-    $user_data = CMSContacts::prepare_user_data($form_state['values'], $edit);
-
-    if ((isset($form['#contact']) && (!empty($form['#contact'])))) {
-        $user_id = $form['#contact']['uid'][0];
+    $site_uuid = variable_get('site_uuid', '');
+    if (!$site_uuid) {
+        drupal_set_message(t('Unable to determine site UUID! Please contact the site administrator'), 'error');
+        $form_state['rebuild'] = TRUE;
     }else {
-        $user_id = $user_data['uid'][0];
-    }
+        $user_data = CMSContacts::prepare_user_data($form_state['values'], $edit);
 
-    $contact_link = l(t('view'), 'contacts/items/' . $user_id . '/view');
-    $watchdog_args = array('@type' => 'Contact', '%title' => $user_data['sn'][0] . ' ' . $user_data['givenName'][0]);
-    $t_args = array('@type' => 'Contact', '%title' => $user_data['sn'][0] . ' ' . $user_data['givenName'][0]);
-
-    if ($edit) {
-        // Edit form
-        $user = $form['#contact'];
-        if (isset($user['o']) && (!empty($user['o']))) {
-            $organization = CMSContacts::get_or_create_organization($user['o'][0], $user['conventions']);
-            $department = CMSContacts::get_or_create_department($user['ou'][0], $user['conventions']);
+        if ((isset($form['#contact']) && (!empty($form['#contact'])))) {
+            $uid = $form['#contact']['uid'][0];
+        }else {
+            $uid = $user_data['uid'][0];
         }
 
-        if (!$agent->edit($user['dn'], $user_data)) {
-            drupal_set_message(t('The contact could not be saved.'), 'error');
-            $form_state['rebuild'] = TRUE;
-        }else {
-            CMSContacts::set_contact_related_content($user_id, $form_state['values']['species'], 'species', 'field_species_experts');
-            CMSContacts::set_contact_related_content($user_id, $form_state['values']['meetings'], 'meeting', 'field_meeting_participants');
-            CMSContacts::update_user_groups($user_id, $user_data['conventions'], $agent);
-            watchdog('content', '@type: updated %title.', $watchdog_args, WATCHDOG_NOTICE, $contact_link);
-            drupal_set_message(t('@type %title has been updated.', $t_args));
+        $contact_link = l(t('view'), '/'. ADMINISTRATION_PATH . 'contacts/items/' . $uid . '/view');
+        $watchdog_args = array('@type' => 'Contact', '%title' => $user_data['sn'][0] . ' ' . $user_data['givenName'][0]);
+        $t_args = array('@type' => 'Contact', '%title' => $user_data['sn'][0] . ' ' . $user_data['givenName'][0]);
 
-            // Redirect to contact page
-            $semaphore = variable_get('cron_semaphore', FALSE);
-
-            if (!$semaphore) {
-                drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/item/' . $user_id . '/' . $user_data['conventions'][0] . '/view');
-            }
-
-        }
-    }else {
-        // Add form
-        $dn = "uid=" . $user_id . "," . $agent->people_dn;
-        if(!$agent->add($dn, $user_data)) {
-            drupal_set_message(t('The contact could not be saved.'), 'error');
-            $form_state['rebuild'] = TRUE;
-        }else {
-            $current_profile = CMSUtils::get_current_profile();
-
-            if ($current_profile !== 'cms') {
-                $groups[] = $current_profile;
+        $agent = CMSContacts::agent();
+        if ($edit) {
+            // Edit form
+            $user = $form['#contact'];
+            if (!$agent->edit($user['dn'], $user_data)) {
+                drupal_set_message(t('The contact could not be saved.'), 'error');
+                $form_state['rebuild'] = TRUE;
             }else {
-                $groups = $user_data['conventions'];
-            }
+//            CMSContacts::set_contact_related_content($uid, $form_state['values']['species'], 'species', 'field_species_experts');
+//            CMSContacts::set_contact_related_content($uid, $form_state['values']['meetings'], 'meeting', 'field_meeting_participants');
+                CMSContacts::update_user_groups($agent, $uid, $site_uuid, $user_data, FALSE);
+                watchdog('content', '@type: updated %title.', $watchdog_args, WATCHDOG_NOTICE, $contact_link);
+                drupal_set_message(t('@type %title has been updated.', $t_args));
 
-            foreach ($groups as $index => $group) {
-                if (!CMSContacts::group_exists($group, $agent)) {
-                    $agent->create_group($group, "cn=$group,ou=Users,o=CMS", array($dn));
-                }else {
-                    $agent->add_to_group($group, array('uniqueMember' => $dn));
+                // Update cache
+                CMSContacts::update_ldap_users_cache();
+                CMSContacts::update_ldap_instruments_cache();
+                CMSContacts::update_ldap_taxonomies_cache();
+
+                // Redirect to contact page
+                $semaphore = variable_get('cron_semaphore', FALSE);
+
+                if (!$semaphore) {
+                    drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/item/' . $uid . '/view');
                 }
             }
+        }else {
+            // Add form
+            $people_dn = variable_get(LDAP_PEOPLE_DN, '');
+            if (!$people_dn) {
+                drupal_set_message(t('Invalid DN for contact.'), 'error');
+                $form_state['rebuild'] = TRUE;
+            }else {
+                $dn = "uid=" . $uid . "," . $people_dn;
+                CMSContacts::update_user_groups($agent, $uid, $site_uuid, $user_data, TRUE);
+                if(!$agent->add($dn, $user_data)) {
+                    drupal_set_message(t('The contact could not be saved.'), 'error');
+                    $form_state['rebuild'] = TRUE;
+                }else {
+//                    CMSContacts::set_contact_related_content($uid, $form_state['values']['species'], 'species', 'field_species_experts');
+                    watchdog('content', '@type: added %title.', $watchdog_args, WATCHDOG_NOTICE, $contact_link);
+                    drupal_set_message(t('@type %title has been created.', $t_args));
 
-            CMSContacts::set_contact_related_content($user_id, $form_state['values']['species'], 'species', 'field_species_experts');
-            watchdog('content', '@type: added %title.', $watchdog_args, WATCHDOG_NOTICE, $contact_link);
-            drupal_set_message(t('@type %title has been created.', $t_args));
+                    CMSContacts::update_user_groups($agent, $uid, $site_uuid, $user_data, TRUE);
 
-            // Redirect to contact page
-            $semaphore = variable_get('cron_semaphore', FALSE);
+                    // Update cache
+                    CMSContacts::update_ldap_users_cache();
+                    CMSContacts::update_ldap_instruments_cache();
+                    CMSContacts::update_ldap_taxonomies_cache();
 
-            if (!$semaphore) {
-                drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/item/' . $user_id . '/' . $user_data['conventions'][0] . '/view');
+                    // Redirect to contact page
+                    $semaphore = variable_get('cron_semaphore', FALSE);
+
+                    if (!$semaphore) {
+                        drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/item/' . $uid . '/view');
+                    }
+                }
             }
         }
-    }
 
-    if ($user_id) {
-        $form_state['values']['uid'] = $user_id;
-        $form_state['uid'] = $user_id;
-        $form_state['redirect'] = '/' . ADMINISTRATION_PATH . 'contacts/listing';
-    }else {
-        drupal_set_message(t('The contact could not be saved.'), 'error');
+        if ($uid) {
+            $form_state['values']['uid'] = $uid;
+            $form_state['uid'] = $uid;
+            $form_state['redirect'] = '/' . ADMINISTRATION_PATH . 'contacts/listing';
+        }else {
+            drupal_set_message(t('An error occurred while saving the contact. Please try again or contact the site administrator.'), 'error');
+        }
     }
-
-    cache_clear_all();
 }
 
 /**
@@ -705,35 +706,31 @@ function organization_delete_confirm($form, &$form_state, $organization_id, $gro
 function contacts_delete_confirm_submit($form, &$form_state) {
     if ($form_state['values']['confirm']) {
         $contact_id = $form['user_id']['#value'];
-//        $agent = CMSContacts::agent();
+        $site_uuid = variable_get('site_uuid', '');
+        $contact = CMSContacts::get_contact_from_cache($contact_id);
 
-        $dn = "uid=$contact_id," . variable_get(LDAP_PEOPLE_DN, '');
+        if (!$site_uuid) {
+            drupal_set_message('Unable to determine site UUID! Please contact site administrator.', 'error');
+            drupal_exit();
+        }
 
-        $contact = CMSContacts::get_contact_from_cache($dn);
-
-//        echo "<pre>";
-//        var_dump($contact);
-//        echo "</pre>";
-//        die();
-//        die();
-        $exists = CMSContacts::user_in_group($group, $contact, $agent);
-
-        if (empty($contact) || (!$exists)) {
+        if (empty($contact)) {
             drupal_not_found();
             drupal_exit();
         }
 
         $full_name = $contact['givenname'][0] . ' ' . $full_name = $contact['sn'][0];
+
+        $dn = "uid=$contact_id," . variable_get(LDAP_PEOPLE_DN, '');
+
+        $agent = CMSContacts::agent();
+        CMSContacts::remove_contact_from_groups($agent, $dn, $site_uuid);
+
         $agent->delete($dn);
 
-        // Delete user from all assigned groups
-        if ($contact['conventions']['count']) {
-            foreach ($contact['conventions'] as $index => $group_name) {
-                if (is_numeric($index)) {
-                    @$agent->delete_from_group($group_name, array('uniquemember' => $dn));
-                }
-            }
-        }
+        CMSContacts::update_ldap_users_cache();
+        CMSContacts::update_ldap_instruments_cache();
+        CMSContacts::update_ldap_taxonomies_cache();
 
         watchdog('content', '@type: deleted %full_name.', array('@type' => 'Contact', '%full_name' => $full_name));
         drupal_set_message(t('@type %full_name has been deleted.', array('@type' => 'Contact', '%full_name' => $full_name)));

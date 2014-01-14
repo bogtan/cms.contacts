@@ -3,16 +3,16 @@
 /**
  * @file
  *   Used to implement general hooks and define Contacts' specific custom functions
-*/
+ */
 
 /**
  * Role to handle Contacts data
-*/
+ */
 define('ROLE_MANAGE_CONTACTS', 'manage contacts');
 
 /**
  * Taxonomy vocabularies used only for Contacts data
-*/
+ */
 define('VOC_STATUS_ORGANIZATION', 'contacts_status_organization');
 define('VOC_CONTACTS_REGION', 'contacts_regions');
 define('VOC_CONTACTS_MAILING', 'contacts_mailing');
@@ -20,7 +20,7 @@ define('VOC_STATUS_PERSON', 'contacts_status_person');
 
 /**
  * Include files for accessing LDAP data and API functions
-*/
+ */
 module_load_include('php', 'cms', 'CMSLDAP');
 module_load_include('menu', 'cms_contacts', 'cms_contacts');
 module_load_include('cron', 'cms_contacts', 'cms_contacts');
@@ -396,7 +396,7 @@ class CMSContacts extends CMSBase {
      *    LDAP agent to handle the search bind and the retrieved results
      *
      * @return  array
-    */
+     */
     public static function search_user($uid, $agent) {
         $agent->search($agent->people_dn, "(uid=$uid)");
         return $agent->get_entries();
@@ -409,7 +409,7 @@ class CMSContacts extends CMSBase {
      * @param   stdClass $agent
      *
      * @return  boolean
-    */
+     */
     public static function group_exists($group_name, $agent) {
         $agent->search($agent->people_dn, "(cn=$group_name)");
         $total = $agent->count_entries();
@@ -444,7 +444,7 @@ class CMSContacts extends CMSBase {
      * @param   stdClass $agent
      *
      * @return  boolean
-    */
+     */
     public static function organization_in_group($group_name, $organization, $agent) {
         if (isset($organization['conventions']) && $organization['conventions']['count']) {
             unset($organization['conventions']['count']);
@@ -456,23 +456,47 @@ class CMSContacts extends CMSBase {
         return FALSE;
     }
 
+    public static function update_contact_group_data($agent, $dn, $existing_groups = array(), $new_groups = array(), $only_add = FALSE) {
+        $add_to_groups = array_diff($new_groups, $existing_groups);
+        $remove_from_groups = array_diff($existing_groups, $new_groups);
+
+        if ($add_to_groups) {
+            foreach ($add_to_groups as $index => $group_dn) {
+                @$agent->add_to_group($group_dn, array('uniqueMember' => $dn));
+            }
+        }
+
+        if($remove_from_groups && !$only_add) {
+            foreach ($remove_from_groups as $index => $group_dn) {
+                @$agent->delete_from_group($group_dn, array('uniquemember' => $dn));
+            }
+        }
+    }
+
     /**
      * Assign a given user to specified groups
      *
      * @param   string   $user_id
      * @param   array    $groups
      * @param   stdClass $agent
-    */
-    public static function update_user_groups($user_id, $groups = array(), $agent) {
-        $instruments = array_keys(CMSLegalInstrument::get_mapped_instruments(TRUE));
-        $existing_groups = array_keys(CMSUtils::get_all_websites());
-        foreach ($existing_groups as $key => $existing_group) {
-            if (CMSContacts::user_in_group($existing_group, $user_id, $agent) && (!in_array($existing_group, array_values($groups)))) {
-                @$agent->delete_from_group($existing_group, array('uniquemember' => "uid=$user_id,ou=Users,o=CMS"));
-            }elseif (!CMSContacts::user_in_group($existing_group, $user_id, $agent) && (in_array($existing_group, array_values($groups)))){
-                @$agent->add_to_group($existing_group, array('uniqueMember' => "uid=$user_id,ou=Users,o=CMS"));
-            }
+     */
+    public static function update_user_groups($agent, $uid, $site_uuid, $user_data = array(), $only_add = FALSE) {
+        $dn = 'uid=' . $uid . ',' . variable_get(LDAP_PEOPLE_DN, '');
+
+        if ($only_add) {
+            $contact_mailing_lists = $contact_statuses_person = $contact_statuses_organization = $contact_instruments = array();
+        }else {
+            $contact_mailing_lists = self::get_groups_for_contact(self::$mailing_list_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
+            $contact_statuses_person = self::get_groups_for_contact(self::$status_person_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
+            $contact_statuses_organization = self::get_groups_for_contact(self::$status_organization_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
+            // Contact must be removed from all cmsInstrument groups so we'll not specify the site's UUID
+            $contact_instruments = self::get_groups_for_contact(self::$instruments_cache, 'update_ldap_instruments_cache', $dn, '');
         }
+
+        self::update_contact_group_data($agent, $dn, $contact_statuses_person, $user_data['statusPerson'], $only_add);
+        self::update_contact_group_data($agent, $dn, $contact_statuses_organization, $user_data['statusOrganization'], $only_add);
+        self::update_contact_group_data($agent, $dn, $contact_mailing_lists, $user_data['mailingLists'], $only_add);
+        self::update_contact_group_data($agent, $dn, $contact_instruments, $user_data['conventions'], $only_add);
     }
 
     /**
@@ -610,19 +634,13 @@ class CMSContacts extends CMSBase {
         // Manually manipulate different cases for LDAP attributes
         foreach (CMSContacts::$user_fields as $field => $ldap_field) {
             if (isset($data[$field]) && (!empty($data[$field]))) {
-                if ($field == 'conventions') {
+                if (in_array($field, array('mailing_list', 'organization_status', 'person_status', 'conventions'))) {
                     $ldap_data[$ldap_field] = array_keys($data[$field]);
-                }elseif ($field == 'organization_status') {
-                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_STATUS_ORGANIZATION, array_keys($data[$field]));
-                }elseif ($field == 'mailing_list') {
-                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_CONTACTS_MAILING, array_keys($data[$field]));
                 }elseif ($field == 'region') {
                     $term = taxonomy_term_load($data[$field]);
                     if ($term && $term->vocabulary_machine_name == VOC_REGION) {
                         $ldap_data[$ldap_field][] = $term->name;
                     }
-                }elseif ($field == 'person_status') {
-                    $ldap_data[$ldap_field] = CMSContacts::contact_map_terms_by_ids(VOC_STATUS_PERSON, array_keys($data[$field]));
                 }elseif($field == 'preferred_language'){
                     if (!empty($data[$field])) {
                         $preferred_languages = array();
@@ -678,7 +696,7 @@ class CMSContacts extends CMSBase {
      *    Drupal Contacts' form field
      * @param   string  $ldap_field
      *    LDAP field name
-    */
+     */
     public static function prepare_multiple_valued_attribute(&$ldap_data, $data, $field, $ldap_field) {
         if (array_key_exists($field, $data) && (!empty($data[$field]))) {
             foreach($data[$field] as $value) {
@@ -1000,7 +1018,7 @@ class CMSContacts extends CMSBase {
      *    )
      *
      * @return  array    $result
-    */
+     */
     public static function get_mapped_contacts_names_uid($filter = '', $associative = FALSE) {
         $result = array();
         $agent = CMSContacts::agent();
@@ -1044,7 +1062,7 @@ class CMSContacts extends CMSBase {
      *    If $only_title is True do not return the whole Drupal $node details
      *
      * @return  array    $related_nodes
-    */
+     */
     public static function get_contact_related_content($uid = '', $content_type = '', $field = '', $only_title = FALSE) {
         $related_nodes = array();
         $query = new EntityFieldQuery();
@@ -1121,7 +1139,7 @@ class CMSContacts extends CMSBase {
      *    Drupal Contacts add/edit form field name
      * @param   string  $ldap_attribute
      *    LDAP attribute on which the data will be saved
-    */
+     */
     public static function set_multiple_attribute(&$ldap_data = array(), $data = array(), $field = '', $ldap_attribute = '') {
         $ldap_data[$ldap_attribute] = array();
         if (isset($data[$field]) && (!empty($data[$field]))) {
@@ -1143,7 +1161,7 @@ class CMSContacts extends CMSBase {
      * @param   string   $ldap_attribute
      *
      * @return  string   $value
-    */
+     */
     public static function get_multiple_attribute($contact = array(), $ldap_attribute = '') {
         $value = '';
         if (isset($contact[$ldap_attribute]) && $contact[$ldap_attribute]['count']) {
@@ -1177,7 +1195,7 @@ class CMSContacts extends CMSBase {
     /**
      * Update LDAP taxonomies cache
      * The cache contains mailing lists, statuses of person and statuses of organization
-    */
+     */
     public static function update_ldap_taxonomies_cache() {
         $agent = self::agent();
         if (!$agent->connected) {
@@ -1227,7 +1245,7 @@ class CMSContacts extends CMSBase {
 
     /**
      * Cache all LDAP entries with objectClass CMS_CONTACT (default cmsContact)
-    */
+     */
     public static function update_ldap_users_cache() {
         $agent = self::agent();
         if (!$agent->connected) {
@@ -1252,7 +1270,7 @@ class CMSContacts extends CMSBase {
 
     /**
      * Cache all LDAP groups with objectClass CMS_INSTRUMENT (default cmsInstrument)
-    */
+     */
     public static function update_ldap_instruments_cache() {
         $agent = self::agent();
         if (!$agent->connected) {
@@ -1357,5 +1375,67 @@ class CMSContacts extends CMSBase {
         }
 
         return $options;
+    }
+
+    public static function create_instruments_form_options() {
+        $options = array();
+        $cache = CMSContacts::get_or_create_ldap_cache(self::$instruments_cache, 'update_ldap_instruments_cache');
+        if ($cache) {
+            foreach ($cache as $dn => $item) {
+                $options[$dn] = $item['cn'][0];
+            }
+        }
+
+        return $options;
+    }
+
+    public static function get_groups_for_contact($cid, $callback, $dn,  $site_uuid = '') {
+        $cache = CMSContacts::get_or_create_ldap_cache($cid, $callback);
+        $lists_dns = array();
+        foreach ($cache as $index => $item) {
+            if (!$site_uuid) {
+                if (in_array($dn, $item['uniquemember']) && (!in_array($item['dn'], $lists_dns))) {
+                    $lists_dns[] = $item['dn'];
+                }
+            }else {
+                if (in_array($dn, $item['uniquemember']) && (!in_array($item['dn'], $lists_dns)) && ($site_uuid == $item['uuid'][0])) {
+                    $lists_dns[] = $item['dn'];
+                }
+            }
+        }
+
+        return $lists_dns;
+    }
+
+    public static function remove_contact_from_groups($agent, $dn = '', $site_uuid) {
+        $contact_mailing_lists = self::get_groups_for_contact(self::$mailing_list_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
+        $contact_statuses_person = self::get_groups_for_contact(self::$status_person_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
+        $contact_statuses_organization = self::get_groups_for_contact(self::$status_organization_cache, 'update_ldap_taxonomies_cache', $dn, $site_uuid);
+        // Contact must be removed from all cmsInstrument groups so we'll not specify the site's UUID
+        $contact_instruments = self::get_groups_for_contact(self::$instruments_cache, 'update_ldap_instruments_cache', $dn, '');
+
+        if ($contact_instruments) {
+            foreach ($contact_instruments as $index => $group_dn) {
+                @$agent->delete_from_group($group_dn, array('uniquemember' => $dn));
+            }
+        }
+
+        if ($contact_mailing_lists) {
+            foreach($contact_mailing_lists as $index => $group_dn) {
+                @$agent->delete_from_group($group_dn, array('uniquemember' => $dn));
+            }
+        }
+
+        if ($contact_statuses_person) {
+            foreach($contact_statuses_person as $index => $group_dn) {
+                @$agent->delete_from_group($group_dn, array('uniquemember' => $dn));
+            }
+        }
+
+        if ($contact_statuses_organization) {
+            foreach($contact_statuses_organization as $index => $group_dn) {
+                @$agent->delete_from_group($group_dn, array('uniquemember' => $dn));
+            }
+        }
     }
 }
