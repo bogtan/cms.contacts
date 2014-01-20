@@ -122,7 +122,13 @@ function cms_contacts_theme($existing, $type, $theme, $path) {
         'file' => 'theme.inc',
         'path' => $path . '/theme',
     );
+
     return array(
+        'cms_contacts_form' => array(
+            'template' => 'forms/contacts/add',
+            'arguments' => array(),
+            'path' => drupal_get_path('theme', 'cms_theme') . '/templates',
+        ),
         'contacts_list' => array(
             'template' => 'contacts/list',
             'arguments' => array(),

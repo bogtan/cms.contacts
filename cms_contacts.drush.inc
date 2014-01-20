@@ -19,6 +19,14 @@ function cms_contacts_drush_command() {
         'aliases' => array('ucz')
     );
 
+    $items['generate_nfp_structure'] = array(
+        'arguments' => array(
+            'destination' => 'Required'
+        ),
+        'required-arguments' => TRUE,
+        'aliases' => array('gns'),
+    );
+
     return $items;
 }
 
@@ -89,4 +97,74 @@ function drush_cms_contacts_update_countries_and_zipcodes($json_file) {
     foreach ($not_saved as $index => $item) {
         print $item . " could not be saved\n";
     }
+}
+
+function drush_cms_contacts_generate_nfp_structure($destination_file = '') {
+    $cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$users_cache, 'update_ldap_users_cache');
+    $instruments_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache');
+
+    $fp = array(
+        'cms' => 'f0b4ae05-8d04-4814-b01f-064c94da5a23',
+        'aewa' => 'dbce2ddc-648e-4302-be84-47d0aa36ad66',
+        'cms/aewa' => 'f0b4ae05-8d04-4814-b01f-064c94da5a23',
+    );
+
+    $ldif = "";
+    $created_countries = array();
+    foreach ($cache as $index => $item) {
+        if (array_key_exists('statusperson', $item) && !empty($item['statusperson'])) {
+            foreach ($item['statusperson'] as $index => $list_name) {
+                if (strtolower($list_name) == 'focal point') {
+                    $uuid = $fp[strtolower($item['conventions'][0])];
+
+                    $country_name = CMSUtils::$country_list[$item['iso2'][0]];
+
+                    if (!array_key_exists($item['iso2'][0], CMSUtils::$country_list)) {
+                        print $item['iso2'][0];
+                    }
+
+                    $dn = "iso2={$item['iso2'][0]},uuid={$uuid}," . variable_get(LDAP_BASE_DN, '');
+
+                    $ldif .= "
+                        dn: {$dn}
+                        objectClass: cmsCountryNFP
+                        iso2: {$item['iso2'][0]}
+                        uuid: {$uuid}
+                        cn: {$country_name}
+                        uniqueMember: {$item['dn']}
+
+                    ";
+
+                    if (!array_key_exists($dn, $created_countries)) {
+                        $created_countries[] = $dn;
+                    }
+                }
+            }
+        }
+    }
+
+    foreach (CMSUtils::$country_list as $iso2 => $country_name) {
+        foreach ($instruments_cache as $index => $item) {
+            $dn = "iso2={$iso2},uuid={$item['uuid'][0]}," . variable_get(LDAP_BASE_DN, '');
+            if (!array_key_exists($dn, $created_countries)) {
+                $ldif .= "
+                    dn: {$dn}
+                    objectClass: cmsCountryNFP
+                    iso2: {$iso2}
+                    uuid: {$item['uuid'][0]}
+                    cn: {$country_name}
+                    uniqueMember:
+
+                ";
+
+                $created_countries[] = $dn;
+            }
+        }
+    }
+
+    $fp = fopen($destination_file . '/nfp.ldif', 'w');
+    fwrite($fp, $ldif);
+    fclose($fp);
+
+    return TRUE;
 }
