@@ -40,11 +40,11 @@ function contacts_list() {
 
         if (isset($user['iso2'])) {
             $countries = "";
-            foreach ($user['iso2'] as $index => $country) {
-                if (is_numeric($index)) {
-                    $country_ob = country_load($user['iso2'][$index]);
+            foreach ($user['iso2'] as $i => $country) {
+                if (is_numeric($i)) {
+                    $country_ob = country_load($user['iso2'][$i]);
                     $countries .= (is_object($country_ob) && property_exists($country_ob, 'name')) ? $country_ob->name : '';
-                    if ($index < $user['iso2']['count']) {
+                    if ($i < $user['iso2']['count']) {
                         $countries .= ", ";
                     }
                 }
@@ -54,10 +54,10 @@ function contacts_list() {
 
         if (isset($user['cpiso2'])) {
             $countries = "";
-            foreach ($user['cpiso2'] as $index => $country) {
-                if (is_numeric($index)) {
-                    $countries .= country_load($user['cpiso2'][$index])->name;
-                    if ($index < $user['cpiso2']['count']) {
+            foreach ($user['cpiso2'] as $i => $country) {
+                if (is_numeric($i)) {
+                    $countries .= country_load($user['cpiso2'][$i])->name;
+                    if ($i < $user['cpiso2']['count']) {
                         $countries .= ", ";
                     }
                 }
