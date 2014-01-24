@@ -267,6 +267,8 @@ class CMSContacts extends CMSBase {
     static $instruments_cache = 'ldap_instruments_cache';
     static $organizations_cache = 'ldap_organizations_cache';
 
+    private static $instance = FALSE;
+
     // Headings for CSV and XLS exported files
     public static $export_file_headings = array(
         'Availability',
@@ -390,7 +392,13 @@ class CMSContacts extends CMSBase {
      * @return   stdClass
      */
     public static function agent() {
-        return new CMSLDAP();
+        if(self::$instance) {
+            return self::$instance;
+        } else {
+            dpm('New LDAP connection');
+            self::$instance = new CMSLDAP();
+        }
+        return self::$instance;
     }
 
     /**
