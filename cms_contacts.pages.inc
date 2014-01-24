@@ -39,42 +39,30 @@ function contacts_list() {
         $users[$index]['countries'] = $users[$index]['countries_post'] = $users[$index]['instruments'] = '';
 
         if (isset($user['iso2'])) {
-            if ($user['iso2']['count'] > 1) {
-                $countries = "";
-                foreach ($user['iso2'] as $index => $country) {
-                    if (is_numeric($index)) {
-                        $country_ob = country_load($user['iso2'][$index]);
-                        $countries .= (is_object($country_ob) && property_exists($country_ob, 'name')) ? $country_ob->name : '';
-                        if ($index < $user['iso2']['count']) {
-                            $countries .= ", ";
-                        }
+            $countries = "";
+            foreach ($user['iso2'] as $index => $country) {
+                if (is_numeric($index)) {
+                    $country_ob = country_load($user['iso2'][$index]);
+                    $countries .= (is_object($country_ob) && property_exists($country_ob, 'name')) ? $country_ob->name : '';
+                    if ($index < $user['iso2']['count']) {
+                        $countries .= ", ";
                     }
                 }
-
-                $users[$index]['countries'] = $countries;
-            }else {
-                $country = country_load($user['iso2'][0]);
-                $users[$index]['countries'] = (is_object($country) && property_exists($country, 'name')) ? $country->name : '';
             }
+            $users[$index]['countries'] = $countries;
         }
 
         if (isset($user['cpiso2'])) {
-            if ($user['cpiso2']['count'] > 1) {
-                $countries = "";
-                foreach ($user['cpiso2'] as $index => $country) {
-                    if (is_numeric($index)) {
-                        $countries .= country_load($user['cpiso2'][$index])->name;
-                        if ($index < $user['cpiso2']['count']) {
-                            $countries .= ", ";
-                        }
+            $countries = "";
+            foreach ($user['cpiso2'] as $index => $country) {
+                if (is_numeric($index)) {
+                    $countries .= country_load($user['cpiso2'][$index])->name;
+                    if ($index < $user['cpiso2']['count']) {
+                        $countries .= ", ";
                     }
                 }
-
-                $users[$index]['countries_post'] = $countries;
-            }else {
-                $country = country_load($user['cpiso2'][0])->name;
-                $users[$index]['countries_post'] = $country;
             }
+            $users[$index]['countries_post'] = $countries;
         }
 
         $aaData[$index][] = (isset($user['st']) && !empty($user['st'])) ? $user['st'][0] : '';
