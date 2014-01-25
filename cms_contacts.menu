@@ -247,5 +247,13 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.api.inc',
     );
 
+    $items[ADMINISTRATION_PATH . 'contacts/ajax/list'] = array(
+        'page callback' => 'contacts_list_ajax_listing',
+        'page arguments' => array(3, 4),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+        'file' => 'cms_contacts.pages.inc',
+    );
+
     return $items;
 }

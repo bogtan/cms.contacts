@@ -18,6 +18,33 @@ module_load_include('module', 'cms_country', 'cms_country');
 define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));
 
+
+function contacts_list_ajax_listing() {
+    $users = _build_contacts_filter();
+    $offset = intval($_GET['iDisplayStart']);
+    $page_size = intval($_GET['iDisplayLength']);
+    $total = count($users);
+    $users = array_slice($users, $offset, $page_size);
+
+    $display = array();
+    foreach($users as $row) {
+        $display[] = (object)array(
+            $row['givenname'][0],
+            $row['sn'][0],
+            $row['countries'],
+            $row['city']
+        );
+    }
+
+    $ret = array(
+        'sEcho' => intval($_GET['sEcho']),
+        'iTotalRecords' => $total,
+        'iTotalDisplayRecords' => $total,
+        'aaData' => $display
+    );
+    echo json_encode($ret);
+}
+
 /**
  * @return   array
  */
@@ -35,70 +62,7 @@ function contacts_list() {
     _build_contacts_exposed_form_options($selected_instruments, $options);
 
     $mapped_instruments = CMSLegalInstrument::list_keyed_by_uuid();
-    $cache_name = 'ldap_contacts_rendered';
-    $cache_rendered = cache_get($cache_name);
-    $cache_rendered_dirty = FALSE;
-    if(!$cache_rendered) {
-        $cache_rendered = array();
-    } else {
-        $cache_rendered = $cache_rendered->data;
-    }
-    $cache_countries = Country::get_country_names_cached();
-    $users = _build_contacts_filter();
-    #$tm_2 = time();
-    foreach ($users as $index => &$user) {
-        $dn = $user['dn'];
-        if(isset($cache_rendered[$dn])) {
-            $user = $cache_rendered[$dn];
-        } else {
-            $cache_rendered_dirty = TRUE;
-            $users[$index]['countries'] = $users[$index]['countries_post'] = $users[$index]['instruments'] = '';
-            $aaData[$index][] = (isset($user['st']) && !empty($user['st'])) ? $user['st'][0] : '';
-            if (isset($user['iso2'])) {
-                $value = "";
-                foreach ($user['iso2'] as $i => $country) {
-                    if (is_numeric($i)) {
-                        @$value .= $cache_countries[strtolower($country)];
-                        if ($i < $user['iso2']['count'] - 1) {
-                            $value .= ", ";
-                        }
-                    }
-                }
-                $user['countries'] = $value;
-            }
-            if (isset($user['cpiso2'])) {
-                $value = "";
-                foreach ($user['cpiso2'] as $i => $country) {
-                    if (is_numeric($i)) {
-                        @$value .= $cache_countries[strtolower($country)];
-                        if ($i < $user['cpiso2']['count'] - 1) {
-                            $value .= ", ";
-                        }
-                    }
-                }
-                $user['countries_post'] = $value;
-            }
-            $contact_instruments = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $user['dn']);
-            $conventions = '';
-            if ($contact_instruments) {
-                foreach ($contact_instruments as $instrument_index => $instrument_name) {
-                        $conventions .= $instrument_name;
-                        if (($instrument_index + 1) < count($contact_instruments)) {
-                            $conventions .= ", ";
-                        }
-                }
-            }
-            $user['instruments'] = $conventions;
-            # Add rendered fields
-            $user['rendered_link'] = sprintf('<a href="/%scontacts/item/%s/view">%s</a>', ADMINISTRATION_PATH, $user['uid'][0], $user['givenname'][0]);
-            $user['rendered_sn'] = $user['sn'][0];
-            $user['rendered_st'] = $user['st'][0];
-            $cache_rendered[$dn] = $user;
-        }
-    }
-    if($cache_rendered_dirty) {
-        cache_set($cache_name, $cache_rendered, 'cache', time() + 3600);
-    }
+
     #$tm_end = time();
     #dpm('LOOP:' . ($tm_end - $tm_2));
     #dpm('TOTAL:' . ($tm_end - $tm_1));
@@ -124,7 +88,7 @@ function contacts_list() {
         'person_status_options' => $options["status_person"],
         'meeting' => isset($_GET['meeting']) ? $_GET['meeting'] : '',
         'species' => isset($_GET['species']) ? $_GET['species'] : '',
-        'users' => $users,
+        'users' => array(),
     ));
 }
 
@@ -994,13 +958,39 @@ function _build_contacts_filter($objectClass = 'cmsContact') {
     if (!empty($status_organization_members)) {
         $users_dns = array_filter(array_intersect($users_dns, $status_organization_members));
     }
-
+    # Filtering by arbitrary query
+    $q = "/$search_query/";
     foreach ($users_dns as $index => $user_dn) {
         if (array_key_exists($user_dn, $users_cache)) {
-            $users[] = $users_cache[$user_dn];
+            $user = $users_cache[$user_dn];
+            // Apply filtering
+            if(empty($search_query) || preg_match($q, $user['qfilter'])) {
+                $users[$user_dn] = $user;
+            }
         }
     }
+    # Sorting
+    $sortCol = $_GET['iSortCol_0'];
+    $sortCol = ($sortCol === NULL || $sortCol < 0 || $sortCol > 3) ? 1 : $sortCol;
+    usort($users, function($a, $b) use ($sortCol) {
+        switch($sortCol) {
+            case 0:
+                return @strcmp($a['givenname'][0], $b['givenname'][0]);
+            case 1:
+                return @strcmp($a['sn'][0], $b['sn'][0]);
+            case 2:
+                return @strcmp($a['countries'], $b['countries']);
+            case 3:
+                return @strcmp($a['city'], $b['city']);
+            default:
+                return @strcmp($a['sn'][0], $b['sn'][0]);
+        }
+    });
 
+    @$sortDirection = strtolower($_GET['sSortDir_0']) == 'asc' ? 'asc' : 'desc';
+    if($sortDirection == 'desc') {
+        $users = array_reverse($users);
+    }
     return $users;
 }
 
