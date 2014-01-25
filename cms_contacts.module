@@ -1208,20 +1208,65 @@ class CMSContacts extends CMSBase {
         $agent = self::agent();
         if (!$agent->connected) {
             drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
-        }else {
+        } else {
+            $start = time();
             $filter = "(objectClass=" . CMS_CONTACT . ")";
-            $result = $agent->search($agent->base_dn, $filter);
+            $agent->search($agent->base_dn, $filter);
             $users = $agent->get_entries();
-            CMSUtils::unset_count_key($users);
+            unset($users['count']);
 
-            $data_to_cache = array();
-            foreach ($users as $index => $user) {
-                $data_to_cache[$user['dn']] = $user;
+            $cache_countries = Country::get_country_names_cached();
+
+            $entries = array();
+            foreach ($users as $index => &$user) {
+                // Attach additional data to the object for rendering, filtering etc.
+                if (isset($user['iso2'])) {
+                    $value = "";
+                    foreach ($user['iso2'] as $i => $country) {
+                        if (is_numeric($i)) {
+                            @$value .= $cache_countries[strtolower($country)];
+                            if ($i < $user['iso2']['count'] - 1) {
+                                $value .= ", ";
+                            }
+                        }
+                    }
+                    $user['countries'] = $value;
+                }
+                if (isset($user['cpiso2'])) {
+                    $value = "";
+                    foreach ($user['cpiso2'] as $i => $country) {
+                        if (is_numeric($i)) {
+                            @$value .= $cache_countries[strtolower($country)];
+                            if ($i < $user['cpiso2']['count'] - 1) {
+                                $value .= ", ";
+                            }
+                        }
+                    }
+                    $user['countries_post'] = $value;
+                }
+
+                /*
+                $contact_instruments = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $user['dn']);
+                $conventions = '';
+                if ($contact_instruments) {
+                    foreach ($contact_instruments as $instrument_index => $instrument_name) {
+                        $conventions .= $instrument_name;
+                        if (($instrument_index + 1) < count($contact_instruments)) {
+                            $conventions .= ", ";
+                        }
+                    }
+                }
+                $user['instruments'] = $conventions;
+                */
+                $user['rendered_link'] = sprintf('<a href="/%scontacts/item/%s/view">%s</a>', ADMINISTRATION_PATH, $user['uid'][0], $user['givenname'][0]);
+                $user['qfilter'] = sprintf(
+                    '%s %s %s', $user['givenname'][0], $user['sn'][0], $user['countries']
+                );
+                $entries[$user['dn']] = $user;
             }
-
-            if ($data_to_cache) {
+            if ($entries) {
                 # Create cache and keep it for 1 hour
-                cache_set(self::$users_cache, $data_to_cache, 'cache', time() + 60 * 60);
+                cache_set(self::$users_cache, $entries, 'cache', time() + 3600);
             }
         }
     }
