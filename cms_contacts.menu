@@ -86,17 +86,6 @@ function cms_contacts_menu() {
         'file' => 'cms_contacts.admin.inc',
     );
 
-    $items['search_contact'] = array(
-        'title' => 'Search for contacts',
-        'description' => 'Search for contacts by a given string',
-        'page callback' => 'contacts_search',
-        'page arguments' => array(1),
-        'access arguments' => array('view contacts content'),
-        'access callback' => 'cms_contacts_access',
-        'type' => MENU_CALLBACK,
-        'file' => 'cms_contacts.api.inc',
-    );
-
     $items['contacts/update_duplicates'] = array(
         'title' => 'Contacts - Update duplicates',
         'description' => 'Check for duplicates and update "conventions" attribute',

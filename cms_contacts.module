@@ -431,26 +431,6 @@ class CMSContacts extends CMSBase {
     }
 
     /**
-     * Check if a given user exists in a specified group
-     *
-     * @param   string   $group_name
-     * @param   array    $user
-     * @param   stdClass $agent
-     *
-     * @return  boolean
-     */
-    public static function user_in_group($group_name, $user, $agent) {
-        if (isset($user['conventions']) && isset($user['conventions']['count'])) {
-            unset($user['conventions']['count']);
-            if (in_array($group_name, $user['conventions'])) {
-                return TRUE;
-            }
-        }
-
-        return FALSE;
-    }
-
-    /**
      * Check if a given organization exists in a specified group
      *
      * @param   string   $group_name
@@ -927,42 +907,6 @@ class CMSContacts extends CMSBase {
         }
 
         return $organization;
-    }
-
-    /**
-     * Check if a specified department name exists.
-     * Create the department if it doesn't exists.
-     *
-     * @param   string   $department_name
-     * @param   array    $conventions
-     *
-     * @return  $array   $department
-     */
-    public static function get_or_create_department($department_name = '', $conventions = array()) {
-        $conventions = array_combine($conventions, $conventions);
-        $department = array();
-        $agent = CMSContacts::agent();
-        $filter = '(&(objectClass=cmsDeparment)(ou=' . $department_name . '))';
-
-        if (!$agent->connected) {
-            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
-        }else {
-            $result = $agent->search($agent->department_dn, $filter);
-            $departments = $agent->get_entries();
-            if ($departments['count']) {
-                $department = $departments[0];
-            }else {
-                $department = CMSContacts::prepare_department_data(array('name' => $department_name,
-                                                                         'conventions' => $conventions));
-                $dn = "did=" . $department['did'] . "," . $agent->department_dn;
-
-                if(!$agent->add($dn, $department)) {
-                    drupal_set_message(t('The department could not be saved.'), 'error');
-                }
-            }
-        }
-
-        return $department;
     }
 
     /**
