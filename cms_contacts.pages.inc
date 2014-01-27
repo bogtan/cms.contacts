@@ -13,6 +13,7 @@ module_load_include('inc', 'cms_species', 'cms_species.api');
 module_load_include('inc', 'cms_meeting', 'cms_meeting.api');
 module_load_include('module', 'cms_instrument', 'cms_instrument');
 module_load_include('module', 'cms', 'cms');
+module_load_include('module', 'cms_country', 'cms_country');
 
 define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));
@@ -21,6 +22,7 @@ define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_
  * @return   array
  */
 function contacts_list() {
+    #$tm_1 = time();
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
     drupal_set_breadcrumb($breadcrumb);
@@ -33,55 +35,73 @@ function contacts_list() {
     _build_contacts_exposed_form_options($selected_instruments, $options);
 
     $mapped_instruments = CMSLegalInstrument::list_keyed_by_uuid();
-
-    $users = _build_contacts_filter();
-    foreach ($users as $index => $user) {
-        $users[$index]['countries'] = $users[$index]['countries_post'] = $users[$index]['instruments'] = '';
-
-        if (isset($user['iso2'])) {
-            $countries = "";
-            foreach ($user['iso2'] as $i => $country) {
-                if (is_numeric($i)) {
-                    $country_ob = country_load($user['iso2'][$i]);
-                    $countries .= (is_object($country_ob) && property_exists($country_ob, 'name')) ? $country_ob->name : '';
-                    if ($i < $user['iso2']['count']) {
-                        $countries .= ", ";
-                    }
-                }
-            }
-            $users[$index]['countries'] = $countries;
-        }
-
-        if (isset($user['cpiso2'])) {
-            $countries = "";
-            foreach ($user['cpiso2'] as $i => $country) {
-                if (is_numeric($i)) {
-                    $countries .= country_load($user['cpiso2'][$i])->name;
-                    if ($i < $user['cpiso2']['count']) {
-                        $countries .= ", ";
-                    }
-                }
-            }
-            $users[$index]['countries_post'] = $countries;
-        }
-
-        $aaData[$index][] = (isset($user['st']) && !empty($user['st'])) ? $user['st'][0] : '';
-
-        $contact_instruments = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $user['dn']);
-
-        $conventions = '';
-        if ($contact_instruments) {
-            foreach ($contact_instruments as $instrument_index => $instrument_name) {
-                    $conventions .= $instrument_name;
-                    if (($instrument_index + 1) < count($contact_instruments)) {
-                        $conventions .= ", ";
-                    }
-            }
-        }
-
-        $users[$index]['instruments'] = $conventions;
+    $cache_name = 'ldap_contacts_rendered';
+    $cache_rendered = cache_get($cache_name);
+    $cache_rendered_dirty = FALSE;
+    if(!$cache_rendered) {
+        $cache_rendered = array();
+    } else {
+        $cache_rendered = $cache_rendered->data;
     }
-
+    $cache_countries = Country::get_country_names_cached();
+    $users = _build_contacts_filter();
+    #$tm_2 = time();
+    foreach ($users as $index => &$user) {
+        $dn = $user['dn'];
+        if(isset($cache_rendered[$dn])) {
+            $user = $cache_rendered[$dn];
+        } else {
+            $cache_rendered_dirty = TRUE;
+            $users[$index]['countries'] = $users[$index]['countries_post'] = $users[$index]['instruments'] = '';
+            $aaData[$index][] = (isset($user['st']) && !empty($user['st'])) ? $user['st'][0] : '';
+            if (isset($user['iso2'])) {
+                $value = "";
+                foreach ($user['iso2'] as $i => $country) {
+                    if (is_numeric($i)) {
+                        @$value .= $cache_countries[strtolower($country)];
+                        if ($i < $user['iso2']['count'] - 1) {
+                            $value .= ", ";
+                        }
+                    }
+                }
+                $user['countries'] = $value;
+            }
+            if (isset($user['cpiso2'])) {
+                $value = "";
+                foreach ($user['cpiso2'] as $i => $country) {
+                    if (is_numeric($i)) {
+                        @$value .= $cache_countries[strtolower($country)];
+                        if ($i < $user['cpiso2']['count'] - 1) {
+                            $value .= ", ";
+                        }
+                    }
+                }
+                $user['countries_post'] = $value;
+            }
+            $contact_instruments = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $user['dn']);
+            $conventions = '';
+            if ($contact_instruments) {
+                foreach ($contact_instruments as $instrument_index => $instrument_name) {
+                        $conventions .= $instrument_name;
+                        if (($instrument_index + 1) < count($contact_instruments)) {
+                            $conventions .= ", ";
+                        }
+                }
+            }
+            $user['instruments'] = $conventions;
+            # Add rendered fields
+            $user['rendered_link'] = sprintf('<a href="/%scontacts/item/%s/view">%s</a>', ADMINISTRATION_PATH, $user['uid'][0], $user['givenname'][0]);
+            $user['rendered_sn'] = $user['sn'][0];
+            $user['rendered_st'] = $user['st'][0];
+            $cache_rendered[$dn] = $user;
+        }
+    }
+    if($cache_rendered_dirty) {
+        cache_set($cache_name, $cache_rendered, 'cache', time() + 3600);
+    }
+    #$tm_end = time();
+    #dpm('LOOP:' . ($tm_end - $tm_2));
+    #dpm('TOTAL:' . ($tm_end - $tm_1));
     return theme('contacts_list', array(
         'page' => (isset($_GET['page']) && (is_numeric($_GET['page']))) ? $_GET['page'] : 1,
         'per_page' => (isset($_GET['per_page']) && (is_numeric($_GET['per_page'])) && (in_array($_GET['per_page'], $per_page_options))) ? $_GET['per_page'] : 10,
