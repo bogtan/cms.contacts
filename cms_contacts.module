@@ -395,7 +395,7 @@ class CMSContacts extends CMSBase {
         if(self::$instance) {
             return self::$instance;
         } else {
-            dpm('New LDAP connection');
+            // dpm('New LDAP connection');
             self::$instance = new CMSLDAP();
         }
         return self::$instance;
