@@ -8,6 +8,6 @@ project = cms_contacts
 configure = admin/config/system/cms_contacts
 
 dependencies[] = views
-dependencies[] = simpletest
 
+files[] = cms_contacts.cache.inc
 files[] = cms_contacts.test
