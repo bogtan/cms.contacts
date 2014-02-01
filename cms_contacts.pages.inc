@@ -12,28 +12,239 @@ module_load_include('inc', 'cms_meeting', 'cms_meeting.api');
 module_load_include('module', 'cms_instrument', 'cms_instrument');
 module_load_include('module', 'cms', 'cms');
 module_load_include('module', 'cms_country', 'cms_country');
+module_load_include('inc', 'cms_contacts', 'cms_contacts.cache');
 
 define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));
 
 
+function cms_contacts_get_filters_from_request() {
+    $ret = array(
+        'instrument' => !empty($_GET['instrument']) ? $_GET['instrument'] : array(),
+        'region' => !empty($_GET['region']) ? $_GET['region'] : array(),
+        'country' => !empty($_GET['country']) ? $_GET['country'] : array(),
+        'person_status' => !empty($_GET['person_status']) ? $_GET['person_status'] : array(),
+        'organization_status' => !empty($_GET['organization_status']) ? $_GET['organization_status'] : array(),
+        'sSearch' => !empty($_GET['sSearch']) ? $_GET['sSearch'] : FALSE,
+        'field_or' => !empty($_GET['per_field_operator']) && $_GET['per_field_operator'] == 'is_one_of',
+        'operator_or' => !empty($_GET['operator']) && $_GET['operator'] == 'is_one_of'
+    );
+    # Availability has three states
+    if(isset($_GET['availability'])) {
+        $ret['availability'] = $_GET['availability'] == 'TRUE';
+    } else {
+        $ret['availability'] = NULL;
+    }
+    return $ret;
+}
+
+
+function cms_contacts_get_sorting_from_request($default_col = 1) {
+    $ret = array();
+    $column = $_GET['iSortCol_0'] >= 0 ? intval($_GET['iSortCol_0']) : $default_col;
+    $direction = (!empty($_GET['sSortDir_0']) && $_GET['sSortDir_0'] == 'desc') ? 'desc' : 'asc';
+    $ret[] = array('column' => $column, 'direction' => $direction);
+    return $ret;
+}
+
+
+function cms_contacts_search($filters = array()) {
+    $all_users = CMSContactsCache::cache_ldap_users();
+
+    $filter_countries = !empty($filters['country']);
+    $filter_regex = $filters['sSearch'] ? '/' . $filters['sSearch'] . '/' : FALSE;
+    $field_or = $filters['field_or'];
+
+    $filter_instrument = !empty($filters['instrument']);
+    $instrument_allowed = array();
+    if($filter_instrument) {
+        // If we need to filter by instruments, build an array with all the people allowed to be inside the results
+        $cached_ip = CMSContactsCache::cache_instrument_people();
+        $instrument_allowed = array();
+        foreach($cached_ip as $uuid => $user_dn) {
+            if(in_array($uuid, $filters['instrument'])) {
+                $instrument_allowed = array_merge($instrument_allowed, $user_dn);
+            }
+        }
+        $instrument_allowed = array_unique($instrument_allowed);
+    }
+
+    $filter_statusperson = !empty($filters['person_status']);
+    $statusperson_allowed = array();
+    if($filter_statusperson) {
+        // If we need to filter by statusperson, build an array with all the people allowed to be inside the results
+        $cached_statusperson = CMSContactsCache::cache_statusperson_people();
+        $statusperson_allowed = array();
+        foreach($cached_statusperson as $dn => $users) {
+            if(in_array($dn, $filters['person_status'])) {
+                $statusperson_allowed = array_merge($statusperson_allowed, $users);
+            }
+        }
+        $statusperson_allowed = array_unique($statusperson_allowed);
+    }
+
+    $filter_statusorganization = !empty($filters['organization_status']);
+    $statusorganization_allowed = array();
+    if($filter_statusorganization) {
+        // If we need to filter by statusperson, build an array with all the people allowed to be inside the results
+        $cached_statusorganization = CMSContactsCache::cache_statusorganization_people();
+
+        $statusorganization_allowed = array();
+        foreach($cached_statusorganization as $dn => $users) {
+            if(in_array($dn, $filters['organization_status'])) {
+                $statusorganization_allowed = array_merge($statusorganization_allowed, $users);
+            }
+        }
+        $statusorganization_allowed = array_unique($statusorganization_allowed);
+    }
+    $filter_region = !empty($filters['region']);
+
+    $filtered_users = array();
+    foreach($all_users as &$u) {
+        $add = TRUE;
+        # Instrument
+        if($filter_instrument) {
+            if($field_or) {
+                if(!in_array($u->dn, $instrument_allowed)) {
+                    $add = FALSE;
+                }
+            } else {
+                if((array_keys($u->instruments) != $filters['instrument'])) {
+                    $add = FALSE;
+                }
+            }
+        }
+        # Country
+        if($filter_countries) {
+            $f = $filters['country'];
+            if(!array_intersect($f, $u->iso2)) {
+                $add = FALSE;
+            }
+        }
+        if($filter_region) {
+            if(empty($u->region)) {
+                $add = FALSE;
+            } else {
+                $f = $filters['region'];
+                if($field_or) {
+                    if(!array_intersect($f, $u->region)) {
+                        $add = FALSE;
+                    }
+                } else {
+                    if($f != array_intersect($f, $u->region) != $filters['region']) {
+                        $add = FALSE;
+                    }
+                }
+            }
+        }
+        # Availability
+        if($filters['availability'] !== NULL && $u->availability != $filters['availability']) {
+            $add = FALSE;
+        }
+        # Search string
+        if($filter_regex && !preg_match($filter_regex, $u->filter)) {
+            $add = FALSE;
+        }
+        # Status person
+        if($filter_statusperson) {
+            if($field_or) {
+                if(!in_array($u->dn, $statusperson_allowed)) {
+                    $add = FALSE;
+                }
+            } else {
+                // Look upon each group
+                foreach($filters['person_status'] as $group_dn) {
+                    /** @var $cached_statusperson array */
+                    if(!array_key_exists($group_dn, $cached_statusperson) ||
+                            !in_array($u->dn, $cached_statusperson[$group_dn])) {
+                        $add = FALSE;
+                        break;
+                    }
+                }
+            }
+        }
+
+        # Status organization
+        if($filter_statusorganization) {
+            if($field_or) {
+                if(!in_array($u->dn, $statusorganization_allowed)) {
+                    $add = FALSE;
+                }
+            } else {
+                // Look upon each group
+                foreach($filters['organization_status'] as $group_dn) {
+                    /** @var $cached_statusorganization array */
+                    if(!array_key_exists($group_dn, $cached_statusorganization) ||
+                            !in_array($u->dn, $cached_statusorganization[$group_dn])) {
+                        $add = FALSE;
+                        break;
+                    }
+                }
+            }
+        }
+        # Assignment
+        if($add) {
+            $filtered_users[] = $u;
+        }
+    }
+    return $filtered_users;
+}
+
+
+function cms_contacts_sort_results($rows, $criteria = array()) {
+    # Sort the results
+    if(!empty($criteria)) {
+        $column = $criteria[0]['column'];
+        $direction = $criteria[0]['direction'];
+        usort($rows, function($a, $b) use ($column) {
+                switch($column) {
+                    case 0:
+                        return strcmp($a->givenname, $b->givenname);
+                    case 2:
+                        return strcmp($a->organization_rendered, $b->organization_rendered);
+                    case 3:
+                        return strcmp($a->countries_rendered, $b->countries_rendered);
+                    case 4:
+                        return strcmp($a->countries_post_rendered, $b->countries_post_rendered);
+                    case 5:
+                        return strcmp($a->instruments_rendered, $b->instruments_rendered);
+                    default:
+                        return strcmp($a->sn, $b->sn);
+                }
+            }
+        );
+        if($direction == 'desc') {
+            $rows = array_reverse($rows, FALSE);
+        }
+    }
+    return $rows;
+}
+
+
 function contacts_list_ajax_listing() {
-    $users = _build_contacts_filter();
+    $filters = cms_contacts_get_filters_from_request();
+    $sort = cms_contacts_get_sorting_from_request();
+    $users = cms_contacts_search($filters);
+    $users = cms_contacts_sort_results($users, $sort);
+
     $offset = intval($_GET['iDisplayStart']);
     $page_size = intval($_GET['iDisplayLength']);
+    if(empty($page_size)) { $page_size = 10; }
+
     $total = count($users);
     $users = array_slice($users, $offset, $page_size);
-
     $display = array();
     foreach($users as $row) {
         $display[] = (object)array(
-            $row['givenname'][0],
-            $row['sn'][0],
-            $row['countries'],
-            $row['city']
+            $row->givenname,
+            $row->sn,
+            $row->organization,
+            $row->countries_rendered,
+            $row->countries_post_rendered,
+            $row->instruments_rendered,
+            $row->edit_link
         );
     }
-
     $ret = array(
         'sEcho' => intval($_GET['sEcho']),
         'iTotalRecords' => $total,
@@ -41,7 +252,9 @@ function contacts_list_ajax_listing() {
         'aaData' => $display
     );
     echo json_encode($ret);
+    drupal_exit();
 }
+
 
 /**
  * @return   array
