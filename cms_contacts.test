@@ -1,8 +1,9 @@
 <?php
 
 module_load_include('test', 'cms', 'cms');
+module_load_include('inc', 'cms_contacts', 'cms_contacts.cache');
 
-class CMSContactsTestCase extends CMSWebTestCase {
+class CMSContactsWebTestCase extends CMSWebTestCase {
 
     public static function getInfo() {
         return array(
@@ -30,21 +31,33 @@ class CMSContactsTestCase extends CMSWebTestCase {
         $this->assertNotNull($this->loggedInUser);
         $this->ensure_access_denied('/' . ADMINISTRATION_PATH . 'contacts/listing', 'authenticated');
     }
+}
 
+class CMSContactsCacheTestCase extends CMSWebTestCase {
 
-    function testAddContact() {
-        
+    public static function getInfo() {
+        return array(
+            'name' => 'CMS contacts cache tests',
+            'description' => 'Verify the caching functionality',
+            'group' => 'CMS Tests'
+        );
     }
 
-    function testEditContact() {
-        
+    public function setUp() {
+        parent::setUp();
+
+        variable_set(LDAP_BASE_DN, 'o=CMS');
+        variable_set(LDAP_BIND_RDN, 'uid=sysadmin,o=CMS');
+        variable_set(LDAP_PEOPLE_DN, 'ou=Users,o=CMS');
+        variable_set(LDAP_ORGANIZATION_DN, 'ou=Organizations,o=CMS');
+        variable_set(LDAP_DEPARTMENT_DN, 'ou=Departments,o=CMS');
+        variable_set(LDAP_PASSWORD, 'XXXX');
+
+        variable_set(LDAP_ADDRESS, 'XXXX');
+        variable_set(LDAP_PORT, 'XXX');
     }
 
-    function testDeleteContact() {
-        
-    }
-
-    function test_get_national_focal_points_for_country() {
-        $this->fail('Not implemented');
+    function test_cache_ldap_users() {
+        CMSContactsCache::cache_ldap_users();
     }
 }
