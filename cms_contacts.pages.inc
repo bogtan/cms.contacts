@@ -114,7 +114,7 @@ function cms_contacts_search($filters = array()) {
                 }
             }
         }
-        # Country
+        # Country - $field_or is always TRUE as we have one user per country
         if($filter_countries) {
             $f = $filters['country'];
             if(!array_intersect($f, $u->iso2)) {
@@ -131,7 +131,7 @@ function cms_contacts_search($filters = array()) {
                         $add = FALSE;
                     }
                 } else {
-                    if($f != array_intersect($f, $u->region) != $filters['region']) {
+                    if($f != array_intersect($f, $u->region)) {
                         $add = FALSE;
                     }
                 }
