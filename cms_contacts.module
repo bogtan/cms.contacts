@@ -889,7 +889,7 @@ class CMSContacts extends CMSBase {
         $agent = CMSContacts::agent();
         $filter = '(&(objectClass=cmsOrganization)(o=' . $organization_name . '))';
         if (!$agent->connected) {
-            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+            //@todo: drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
         }else {
             $result = $agent->search($agent->organization_dn, $filter);
             $organizations = $agent->get_entries();
@@ -987,7 +987,7 @@ class CMSContacts extends CMSBase {
         }
 
         if (!$agent->connected) {
-            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+            //@todo: drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
         }else {
             $agent->search($agent->people_dn, $ldap_filter);
             $contacts = $agent->get_entries();
@@ -1157,7 +1157,7 @@ class CMSContacts extends CMSBase {
     public static function update_ldap_taxonomies_cache() {
         $agent = self::agent();
         if (!$agent->connected) {
-            drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
+            //@todo: drupal_set_message('Unable to connect to the LDAP server! Please contact site administrator.', 'error');
         }else {
             $filter = "(|(objectClass=" . CMS_MAILING. ")(objectClass=" . CMS_STATUS_PERSON . ")(objectClass=" . CMS_STATUS_ORGANIZATION . "))";
             $result = $agent->search($agent->base_dn, $filter);
@@ -1203,15 +1203,20 @@ class CMSContacts extends CMSBase {
 
     /**
      * Cache all LDAP entries with objectClass CMS_CONTACT (default cmsContact)
+     * @todo: Must remove this cache
      */
     public static function update_ldap_users_cache() {
         $agent = self::agent();
         if (!$agent->connected) {
-            drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
+            //@todo: drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
         } else {
-            $start = time();
             $filter = "(objectClass=" . CMS_CONTACT . ")";
-            $agent->search($agent->base_dn, $filter);
+
+            $attributes = array(
+                'uid', 'sn', 'givenname', 'region', 'iso2', 'o', 'cpIso2', 'cmsavailability',
+                'statusperson', 'statusorganization', 'mailinglists'
+            );
+            $agent->search($agent->base_dn, $filter, $attributes);
             $users = $agent->get_entries();
             unset($users['count']);
 
@@ -1221,10 +1226,12 @@ class CMSContacts extends CMSBase {
             foreach ($users as $index => &$user) {
                 // Attach additional data to the object for rendering, filtering etc.
                 if (isset($user['iso2'])) {
+                    $user['filter_iso2'] = array();
                     $value = "";
                     foreach ($user['iso2'] as $i => $country) {
                         if (is_numeric($i)) {
-                            @$value .= $cache_countries[strtolower($country)];
+                            $user['filter_iso2'][] = strtoupper($country);
+                            @$value .= $cache_countries[strtoupper($country)];
                             if ($i < $user['iso2']['count'] - 1) {
                                 $value .= ", ";
                             }
@@ -1232,11 +1239,12 @@ class CMSContacts extends CMSBase {
                     }
                     $user['countries'] = $value;
                 }
+
                 if (isset($user['cpiso2'])) {
                     $value = "";
                     foreach ($user['cpiso2'] as $i => $country) {
                         if (is_numeric($i)) {
-                            @$value .= $cache_countries[strtolower($country)];
+                            @$value .= $cache_countries[strtoupper($country)];
                             if ($i < $user['cpiso2']['count'] - 1) {
                                 $value .= ", ";
                             }
@@ -1277,7 +1285,7 @@ class CMSContacts extends CMSBase {
     public static function update_ldap_instruments_cache() {
         $agent = self::agent();
         if (!$agent->connected) {
-            drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
+            //@todo: drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
         }else {
             $filter = "(objectClass=" . CMS_INSTRUMENT . ")";
             $result = $agent->search($agent->base_dn, $filter);
@@ -1299,7 +1307,7 @@ class CMSContacts extends CMSBase {
     public static function update_ldap_organizations_cache() {
         $agent = self::agent();
         if (!$agent->connected) {
-            drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
+            //@todo: drupal_set_message(t('Unable to connect to the LDAP server! Please contact site administrator'), 'error');
         }else {
             $filter = "(objectClass=" . CMS_ORGANIZATION . ")";
             $result = $agent->search($agent->base_dn, $filter);

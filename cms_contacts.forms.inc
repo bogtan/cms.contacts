@@ -207,7 +207,9 @@ function cms_contacts_form($form, &$form_state, $contact) {
     $instruments_options = CMSContacts::create_instruments_form_options();
     $contact_instruments = array();
     if ($contact_dn) {
-        $contact_instruments = CMSContacts::get_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $contact_dn);
+        $contact_instruments = CMSContacts::get_groups_for_contact(
+            CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $contact_dn
+        );
     }
 
     $form['conventions'] = array(
@@ -633,8 +635,7 @@ function organization_form($form, &$form_state, $organization) {
         '#maxlength' => 512,
     );
 
-    $options = $mapped_instruments = CMSLegalInstrument::cms_instruments_names();
-
+    $options = CMSLegalInstrument::cms_instruments_names();
     $form['conventions'] = array(
         '#type' => 'select',
         '#multiple' => TRUE,
