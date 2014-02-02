@@ -239,8 +239,9 @@ function contacts_list_ajax_listing() {
     $total = count($users);
     $users = array_slice($users, $offset, $page_size);
     $display = array();
-    foreach($users as $row) {
+    foreach($users as $idx => $row) {
         $display[] = (object)array(
+            $idx + $offset + 1,
             $row->givenname,
             $row->sn,
             $row->organization,
