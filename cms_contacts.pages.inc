@@ -54,7 +54,7 @@ function cms_contacts_search($filters = array()) {
     $filter_countries = !empty($filters['country']);
     $filter_regex = $filters['sSearch'] ? '/' . $filters['sSearch'] . '/i' : FALSE;
     $field_or = $filters['per_field_operator'];
-    $operator_or = $filters['operator'];
+    $operator_or = $filters['operator'];//@todo: Not implemented
 
     $filter_instrument = !empty($filters['instrument']);
     $instrument_allowed = array();
