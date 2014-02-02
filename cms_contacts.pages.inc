@@ -17,6 +17,10 @@ module_load_include('inc', 'cms_contacts', 'cms_contacts.cache');
 define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));
 
+function cms_contacts_get_url() {
+    return '/' . ADMINISTRATION_PATH . 'contacts/listing';
+}
+
 
 function cms_contacts_get_filters_from_request() {
     $ret = array(
@@ -288,6 +292,7 @@ function contacts_list() {
             'region_options' => $options["regions"],
             'org_status_options' => $options["status_organization"],
             'person_status_options' => $options["status_person"],
+            'form_reset_url' => cms_contacts_get_url()
         )
     );
     return theme('contacts_list', $params);
@@ -317,7 +322,7 @@ function organizations_list() {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
     drupal_set_breadcrumb($breadcrumb);
 
     return theme('contacts_organizations_list', array(
@@ -362,7 +367,7 @@ function contacts_view($contact_id) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
     drupal_set_breadcrumb($breadcrumb);
 
     $contact['conventions'] = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $contact['dn']);
@@ -406,7 +411,7 @@ function organization_view($organization_id, $group) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
     $breadcrumb[] = l(t('Organizations'), ADMINISTRATION_PATH . 'contacts/organizations/listing');
     drupal_set_breadcrumb($breadcrumb);
 
@@ -541,7 +546,7 @@ function cms_contacts_form_submit($form, &$form_state) {
         if ($uid) {
             $form_state['values']['uid'] = $uid;
             $form_state['uid'] = $uid;
-            $form_state['redirect'] = '/' . ADMINISTRATION_PATH . 'contacts/listing';
+            $form_state['redirect'] = cms_contacts_get_url();
         }else {
             drupal_set_message(t('An error occurred while saving the contact. Please try again or contact the site administrator.'), 'error');
         }
@@ -621,7 +626,7 @@ function contacts_add($type) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
 
     drupal_set_breadcrumb($breadcrumb);
 
@@ -650,7 +655,7 @@ function contacts_edit($contact_id) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
     $breadcrumb[] = l($contact['givenname'][0] . ' ' . $contact['sn'][0], ADMINISTRATION_PATH . 'contacts/item/' . $contact_id . '/view');
 
     drupal_set_breadcrumb($breadcrumb);
@@ -681,7 +686,7 @@ function organization_edit($organization_id, $group) {
 
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
-    $breadcrumb[] = l(t('Contacts'), ADMINISTRATION_PATH . 'contacts/listing');
+    $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
     $breadcrumb[] = l(t('Organizations'), ADMINISTRATION_PATH . 'contacts/organizations/listing');
     $breadcrumb[] = l(CMSUtils::character_limiter($organization['o'][0], 100), ADMINISTRATION_PATH . 'contacts/organization/' . $organization_id . '/' . $group . '/view');
 
@@ -784,7 +789,7 @@ function contacts_delete_confirm_submit($form, &$form_state) {
         drupal_set_message(t('@type %full_name has been deleted.', array('@type' => 'Contact', '%full_name' => $full_name)));
     }
 
-    $form_state['redirect'] = '/' . ADMINISTRATION_PATH . 'contacts/listing';
+    $form_state['redirect'] = cms_contacts_get_url();
 }
 
 /**
