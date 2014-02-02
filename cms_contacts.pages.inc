@@ -203,15 +203,15 @@ function cms_contacts_sort_results($rows, $criteria = array()) {
         $direction = $criteria[0]['direction'];
         usort($rows, function($a, $b) use ($column) {
                 switch($column) {
-                    case 0:
+                    case 1:
                         return strcmp($a->givenname, $b->givenname);
-                    case 2:
-                        return strcmp($a->organization_rendered, $b->organization_rendered);
                     case 3:
-                        return strcmp($a->countries_rendered, $b->countries_rendered);
+                        return strcmp($a->organization_rendered, $b->organization_rendered);
                     case 4:
-                        return strcmp($a->countries_post_rendered, $b->countries_post_rendered);
+                        return strcmp($a->countries_rendered, $b->countries_rendered);
                     case 5:
+                        return strcmp($a->countries_post_rendered, $b->countries_post_rendered);
+                    case 6:
                         return strcmp($a->instruments_rendered, $b->instruments_rendered);
                     default:
                         return strcmp($a->sn, $b->sn);
@@ -293,7 +293,8 @@ function contacts_list() {
             'region_options' => $options["regions"],
             'org_status_options' => $options["status_organization"],
             'person_status_options' => $options["status_person"],
-            'form_reset_url' => cms_contacts_get_url()
+            'form_reset_url' => cms_contacts_get_url(),
+            'sort' => cms_contacts_get_sorting_from_request()
         )
     );
     return theme('contacts_list', $params);
