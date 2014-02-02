@@ -26,8 +26,8 @@ function cms_contacts_get_filters_from_request() {
         'person_status' => !empty($_GET['person_status']) ? $_GET['person_status'] : array(),
         'organization_status' => !empty($_GET['organization_status']) ? $_GET['organization_status'] : array(),
         'sSearch' => !empty($_GET['sSearch']) ? $_GET['sSearch'] : FALSE,
-        'field_or' => !empty($_GET['per_field_operator']) && $_GET['per_field_operator'] == 'is_one_of',
-        'operator_or' => !empty($_GET['operator']) && $_GET['operator'] == 'is_one_of'
+        'per_field_operator' => !empty($_GET['per_field_operator']) && $_GET['per_field_operator'] == 'is_one_of',
+        'operator' => !empty($_GET['operator']) && $_GET['operator'] == 'is_one_of'
     );
     # Availability has three states
     if(isset($_GET['availability'])) {
@@ -52,8 +52,9 @@ function cms_contacts_search($filters = array()) {
     $all_users = CMSContactsCache::cache_ldap_users();
 
     $filter_countries = !empty($filters['country']);
-    $filter_regex = $filters['sSearch'] ? '/' . $filters['sSearch'] . '/' : FALSE;
-    $field_or = $filters['field_or'];
+    $filter_regex = $filters['sSearch'] ? '/' . $filters['sSearch'] . '/i' : FALSE;
+    $field_or = $filters['per_field_operator'];
+    $operator_or = $filters['operator'];
 
     $filter_instrument = !empty($filters['instrument']);
     $instrument_allowed = array();
@@ -257,7 +258,8 @@ function contacts_list_ajax_listing() {
 
 
 /**
- * @return   array
+ * Render the contacts listing view
+ * @return string Rendered HTML template using theme('contacts_list')
  */
 function contacts_list() {
     $breadcrumb = array();
@@ -266,37 +268,29 @@ function contacts_list() {
     drupal_set_title(t('Contacts'));
 
     $selected_instruments = isset($_GET['instrument']) ? $_GET['instrument'] : array();
-    $per_page_options = array(10, 25, 50, 100);
-
     $options = array('species' => array(), 'meetings' => array(), 'regions' => array(), 'mailing' => array(), 'status_organization' => array(), 'status_person' => array());
     _build_contacts_exposed_form_options($selected_instruments, $options);
 
     $mapped_instruments = CMSLegalInstrument::list_keyed_by_uuid();
 
-    return theme('contacts_list', array(
-        'page' => (isset($_GET['page']) && (is_numeric($_GET['page']))) ? $_GET['page'] : 1,
-        'per_page' => (isset($_GET['per_page']) && (is_numeric($_GET['per_page'])) && (in_array($_GET['per_page'], $per_page_options))) ? $_GET['per_page'] : 10,
-        'per_page_options' => $per_page_options,
-        'operator' => (isset($_GET['operator']) && in_array($_GET['operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['operator'] : 'is_all_of',
-        'per_field_operator' => (isset($_GET['per_field_operator']) && in_array($_GET['per_field_operator'], unserialize(DEFAULT_CONTACTS_FILTER_OPERATOR))) ? $_GET['per_field_operator'] : 'is_all_of',
-        'instrument' => $selected_instruments,
-        'countries' => isset($_GET['country']) ? $_GET['country'] : array(),
-        'instruments' => $mapped_instruments,
-        'regions' => isset($_GET['region']) ? $_GET['region'] : array(),
-        'mailing_list' => isset($_GET['mailing_list']) ? $_GET['mailing_list'] : array(),
-        'availability' => (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "",
-        'person_status' => isset($_GET['person_status']) ? $_GET['person_status'] : array(),
-        'organization_status' => isset($_GET['organization_status']) ? $_GET['organization_status'] : array(),
-        'species_options' => $options["species"],
-        'meeting_options' => $options["meetings"],
-        'region_options' => $options["regions"],
-        'mailing_options' => $options["mailing"],
-        'org_status_options' => $options["status_organization"],
-        'person_status_options' => $options["status_person"],
-        'meeting' => isset($_GET['meeting']) ? $_GET['meeting'] : '',
-        'species' => isset($_GET['species']) ? $_GET['species'] : '',
-        'users' => array(),
-    ));
+    $params = array_merge(
+        cms_contacts_get_filters_from_request(),
+        array(
+            'instrument' => $selected_instruments,
+            'countries' => isset($_GET['country']) ? $_GET['country'] : array(),
+            'instruments' => $mapped_instruments,
+            'regions' => isset($_GET['region']) ? $_GET['region'] : array(),
+            'availability' => (isset($_GET['availability']) && (in_array($_GET['availability'], unserialize(AVAILABILITY_STATUSES)))) ? $_GET['availability'] : "",
+            'person_status' => isset($_GET['person_status']) ? $_GET['person_status'] : array(),
+            'organization_status' => isset($_GET['organization_status']) ? $_GET['organization_status'] : array(),
+            'species_options' => $options["species"],
+            'meeting_options' => $options["meetings"],
+            'region_options' => $options["regions"],
+            'org_status_options' => $options["status_organization"],
+            'person_status_options' => $options["status_person"],
+        )
+    );
+    return theme('contacts_list', $params);
 }
 
 
