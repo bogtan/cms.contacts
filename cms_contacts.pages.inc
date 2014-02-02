@@ -204,17 +204,17 @@ function cms_contacts_sort_results($rows, $criteria = array()) {
         usort($rows, function($a, $b) use ($column) {
                 switch($column) {
                     case 1:
-                        return strcmp($a->givenname, $b->givenname);
+                        return strcasecmp($a->givenname, $b->givenname);
                     case 3:
-                        return strcmp($a->organization_rendered, $b->organization_rendered);
+                        return strcasecmp($a->organization, $b->organization);
                     case 4:
-                        return strcmp($a->countries_rendered, $b->countries_rendered);
+                        return strcasecmp($a->countries_rendered, $b->countries_rendered);
                     case 5:
-                        return strcmp($a->countries_post_rendered, $b->countries_post_rendered);
+                        return strcasecmp($a->countries_post_rendered, $b->countries_post_rendered);
                     case 6:
-                        return strcmp($a->instruments_rendered, $b->instruments_rendered);
+                        return strcasecmp($a->instruments_rendered, $b->instruments_rendered);
                     default:
-                        return strcmp($a->sn, $b->sn);
+                        return strcasecmp($a->sn, $b->sn);
                 }
             }
         );
