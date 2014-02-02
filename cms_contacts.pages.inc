@@ -278,6 +278,23 @@ function contacts_list() {
 
     $mapped_instruments = CMSLegalInstrument::list_keyed_by_uuid();
 
+    drupal_add_js(
+        sprintf('var administration_path = "%s";', ADMINISTRATION_PATH),
+        'inline'
+    );
+    drupal_add_js(
+        drupal_get_path('module', 'datatables') . '/dataTables/media/js/jquery.dataTables.min.js'
+    );
+    drupal_add_js(
+        drupal_get_path('module', 'datatables') . '/js/DT_bootstrap.js'
+    );
+    drupal_add_css(
+        drupal_get_path('module', 'datatables') . '/dataTables/media/css/demo_table.css'
+    );
+    drupal_add_js(
+        drupal_get_path('theme', 'cms_theme') . '/js/contacts.js'
+    );
+
     $params = array_merge(
         cms_contacts_get_filters_from_request(),
         array(
