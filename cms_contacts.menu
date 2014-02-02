@@ -15,7 +15,7 @@
  * @param   $array   $items
  */
 function cms_contacts_menu_alter(&$items) {
-    $items[ADMINISTRATION_PATH . 'contacts/listing']['page callback'] = 'contacts_list';
+    $items[ADMINISTRATION_PATH . 'contacts/listing']['page callback'] = 'cms_contacts_list';
     $items[ADMINISTRATION_PATH . 'contacts/listing']['file'] = drupal_get_path('module', 'cms_contacts') . '/cms_contacts.pages.inc';
     $items[ADMINISTRATION_PATH . 'contacts/listing']['access arguments'] = array('view contacts content');
     $items[ADMINISTRATION_PATH . 'contacts/listing']['access callback'] = 'cms_contacts_access';
@@ -248,7 +248,7 @@ function cms_contacts_menu() {
     );
 
     $items[ADMINISTRATION_PATH . 'contacts/ajax/list'] = array(
-        'page callback' => 'contacts_list_ajax_listing',
+        'page callback' => 'cms_contacts_list_ajax_listing',
         'page arguments' => array(3, 4),
         'access arguments' => array('access content'),
         'type' => MENU_CALLBACK,

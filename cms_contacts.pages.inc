@@ -226,7 +226,7 @@ function cms_contacts_sort_results($rows, $criteria = array()) {
 }
 
 
-function contacts_list_ajax_listing() {
+function cms_contacts_list_ajax_listing() {
     $filters = cms_contacts_get_filters_from_request();
     $sort = cms_contacts_get_sorting_from_request();
     $users = cms_contacts_search($filters);
@@ -266,7 +266,7 @@ function contacts_list_ajax_listing() {
  * Render the contacts listing view
  * @return string Rendered HTML template using theme('contacts_list')
  */
-function contacts_list() {
+function cms_contacts_list() {
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
     drupal_set_breadcrumb($breadcrumb);
