@@ -498,7 +498,7 @@ function cms_contacts_form_submit($form, &$form_state) {
             $uid = $user_data['uid'][0];
         }
 
-        $contact_link = l(t('view'), '/'. ADMINISTRATION_PATH . 'contacts/items/' . $uid . '/view');
+        $contact_link = l(t('view'), ADMINISTRATION_PATH . 'contacts/items/' . $uid . '/view');
         $watchdog_args = array('@type' => 'Contact', '%title' => $user_data['sn'][0] . ' ' . $user_data['givenName'][0]);
         $t_args = array('@type' => 'Contact', '%title' => $user_data['sn'][0] . ' ' . $user_data['givenName'][0]);
 
@@ -526,7 +526,7 @@ function cms_contacts_form_submit($form, &$form_state) {
                 $semaphore = variable_get('cron_semaphore', FALSE);
 
                 if (!$semaphore) {
-                    drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/item/' . $uid . '/view');
+                    drupal_goto(ADMINISTRATION_PATH . 'contacts/item/' . $uid . '/view');
                 }
             }
         }else {
@@ -557,7 +557,7 @@ function cms_contacts_form_submit($form, &$form_state) {
                     $semaphore = variable_get('cron_semaphore', FALSE);
 
                     if (!$semaphore) {
-                        drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/item/' . $uid . '/view');
+                        drupal_goto(ADMINISTRATION_PATH . 'contacts/item/' . $uid . '/view');
                     }
                 }
             }
@@ -605,7 +605,7 @@ function organization_form_submit($form, &$form_state) {
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
-                drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/organization/' . $oid . '/' . $organization_data['conventions'][0] . '/view');
+                drupal_goto(ADMINISTRATION_PATH . 'contacts/organization/' . $oid . '/' . $organization_data['conventions'][0] . '/view');
             }
         }
     }else {
@@ -622,7 +622,7 @@ function organization_form_submit($form, &$form_state) {
             $semaphore = variable_get('cron_semaphore', FALSE);
 
             if (!$semaphore) {
-                drupal_goto('/' . ADMINISTRATION_PATH . 'contacts/organization/' . $oid . '/' . $organization_data['conventions'][0] . '/view');
+                drupal_goto(ADMINISTRATION_PATH . 'contacts/organization/' . $oid . '/' . $organization_data['conventions'][0] . '/view');
             }
         }
     }
@@ -630,7 +630,7 @@ function organization_form_submit($form, &$form_state) {
     if ($oid) {
         $form_state['values']['oid'] = $oid;
         $form_state['oid'] = $oid;
-        $form_state['redirect'] = '/' . ADMINISTRATION_PATH . 'contacts/organizations/listing';
+        $form_state['redirect'] = ADMINISTRATION_PATH . 'contacts/organizations/listing';
     }else {
         drupal_set_message(t('The organization could not be saved.'), 'error');
     }
@@ -870,7 +870,7 @@ function organization_delete_confirm_submit($form, &$form_state) {
         drupal_set_message(t('@type %organization has been deleted.', array('@type' => 'Organization', '%organization' => $organization_name)));
     }
 
-    $form_state['redirect'] = '/' . ADMINISTRATION_PATH . 'contacts/organizations/listing';
+    $form_state['redirect'] = ADMINISTRATION_PATH . 'contacts/organizations/listing';
 }
 
 function build_terms_options($vocabularies = array(), $existing_options = array(), $vocabulary_name, $profile = '', $site_name = '', $show_site_name = TRUE) {
