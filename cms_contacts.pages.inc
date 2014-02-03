@@ -418,17 +418,13 @@ function contacts_view($contact_id) {
     $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
     drupal_set_breadcrumb($breadcrumb);
 
-    $contact['conventions'] = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $contact['dn']);
-    $contact['conventions']['count'] = count($contact['conventions']);
+    $contact['conventions'] = implode("<br />\n", CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$instruments_cache, 'update_ldap_instruments_cache', $contact['dn']));
 
-    $contact['statusperson'] = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache', $contact['dn']);
-    $contact['status_person']['count'] = count($contact['statusperson']);
+    $contact['statusperson'] = implode("<br />\n", CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache', $contact['dn']));
 
-    $contact['statusorganization'] = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache', $contact['dn']);
-    $contact['statusorganization']['count'] = count($contact['statusorganization']);
+    $contact['statusorganization'] = implode("<br />\n", CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache', $contact['dn']));
 
-    $contact['mailinglists'] = CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache', $contact['dn']);
-    $contact['mailinglists']['count'] = count($contact['mailinglists']);
+    $contact['mailinglists'] = implode("<br />\n", CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache', $contact['dn']));
 
     $contact['species'] = CMSContacts::get_contact_related_content($contact_id, 'species', 'field_species_experts');
     $contact['meetings'] = CMSContacts::get_contact_related_content($contact_id, 'meeting', 'field_meeting_participants');

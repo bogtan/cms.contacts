@@ -1419,11 +1419,19 @@ class CMSContacts extends CMSBase {
         foreach ($cache as $index => $item) {
             if (!$site_uuid) {
                 if (in_array($dn, $item['uniquemember']) && (!in_array($item['dn'], $lists_dns))) {
-                    $lists_dns[] = $item['cn'][0];
+                    if ($cid != CMSContacts::$instruments_cache) {
+                        $lists_dns[] = $item['cn'][0] . " (" . $item['in'][0] . ")";
+                    }else {
+                        $lists_dns[] = $item['cn'][0];
+                    }
                 }
             }else {
                 if (in_array($dn, $item['uniquemember']) && (!in_array($item['dn'], $lists_dns)) && ($site_uuid == $item['uuid'][0])) {
-                    $lists_dns[] = $item['cn'][0];
+                    if ($cid != CMSContacts::$instruments_cache) {
+                        $lists_dns[] = $item['cn'][0] . " (" . $item['in'][0] . ")";
+                    }else {
+                        $lists_dns[] = $item['cn'][0];
+                    }
                 }
             }
         }
