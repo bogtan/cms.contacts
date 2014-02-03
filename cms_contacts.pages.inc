@@ -374,7 +374,36 @@ function organizations_list() {
  * Show contact details of a specified UID
  */
 function contacts_view($contact_id) {
-    $contact = CMSContacts::get_contact_from_cache($contact_id);
+    if (!$contact_id) {
+        drupal_not_found();
+        drupal_exit();
+    }
+
+    $semaphore = variable_get('cron_semaphore', FALSE);
+    $people_dn = variable_get(LDAP_PEOPLE_DN, '');
+
+    if (!$people_dn) {
+        drupal_set_message(t('Unable to build contact\'s DN! Please contact site administrator.'), 'error');
+
+        if (!$semaphore) {
+            drupal_goto(ADMINISTRATION_PATH . 'contacts/item/' . $contact_id . '/view');
+        }
+    }
+
+    $ldap = CMSLDAP::get_instance();
+
+    $query = $ldap->search($people_dn, "uid={$contact_id}");
+    $results = $ldap->get_entries();
+
+    if (!is_array($results) || !array_key_exists('count', $results) || ($results['count'] !== 1)) {
+        drupal_set_message(t('Multiple entries identified! Please contact site administrator.'), 'error');
+
+        if (!$semaphore) {
+            drupal_goto(ADMINISTRATION_PATH . 'contacts/item/' . $contact_id . '/view');
+        }
+    }
+
+    $contact = $results[0];
 
     if (empty($contact)) {
         drupal_not_found();
