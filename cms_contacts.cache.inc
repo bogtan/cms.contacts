@@ -161,7 +161,7 @@ class CMSContactsCache {
             $ldap = CMSLDAP::get_instance();
             $filter = "(objectClass=" . CMS_CONTACT . ")";
             $attributes = array(
-                'uid', 'sn', 'givenname', 'region', 'iso2', 'o', 'cpIso2', 'cmsavailability',
+                'uid', 'sn', 'givenname', 'region', 'iso2', 'o', 'cpiso2', 'cmsavailability',
                 'statusperson', 'statusorganization', 'mailinglists'
             );
             $true = 'TRUE';
@@ -209,8 +209,8 @@ class CMSContactsCache {
 
                 $ob->countries_post = array();
                 $ob->countries_post_rendered = '';
-                if(array_key_exists('cpIso2', $u)) {
-                    $tmp = $u['cpIso2'];
+                if(array_key_exists('cpiso2', $u)) {
+                    $tmp = $u['cpiso2'];
                     unset($tmp['count']);
                     $countries = array();
                     foreach($tmp as $iso2) {
