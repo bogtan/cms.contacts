@@ -18,6 +18,17 @@ define('CMS_CONTACTS_CACHE_LIFETIME', 3600);
  */
 class CMSContactsCache {
 
+    /** 
+     * Clear the contacts LDAP cache. Next cache request will reload it
+     */
+    public static function cache_clear_all() {
+        cache_clear_all(CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE, 'cache');
+        cache_clear_all(CMS_CONTACTS_CACHE_INSTRUMENT_PEOPLE, 'cache');
+        cache_clear_all(CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE, 'cache');
+        cache_clear_all(CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE, 'cache');
+        cache_clear_all(CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE, 'cache');
+    }
+
     /**
      * Cache the people membership to the mailing lists
      * @return array Array of arrays keyed by mailinglist UUID with user DN as items
