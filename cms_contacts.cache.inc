@@ -227,7 +227,7 @@ class CMSContactsCache {
                     foreach($tmp as $iso2) {
                         $countries[] = $country_cache[$iso2];
                     }
-                    $ob->countryPostISO2 = $tmp;
+                    $ob->cpiso2 = $tmp;
                     $ob->countries_post = $countries;
                     $ob->countries_post_rendered = implode(', ', $countries);
                 }
