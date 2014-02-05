@@ -249,7 +249,7 @@ function cms_contacts_list_ajax_listing() {
             $row->countries_rendered,
             $row->countries_post_rendered,
             $row->instruments_rendered,
-            $row->edit_link
+            $row->view_link  . "&nbsp;&middot;&nbsp;" . $row->edit_link,
         );
     }
     $ret = array(

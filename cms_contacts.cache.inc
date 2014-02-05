@@ -192,7 +192,8 @@ class CMSContactsCache {
                 $ob->uid = $u['uid'][0];
                 $ob->sn = $u['sn'][0];
                 $ob->givenname = $u['givenname'][0];
-                $ob->edit_link = sprintf('<a target="_blank" href="/%scontacts/item/%s/view">Edit</a>', ADMINISTRATION_PATH, $ob->uid);
+                $ob->view_link = sprintf('<a target="_blank" href="/%scontacts/item/%s/view">' . t('View') . '</a>', ADMINISTRATION_PATH, $ob->uid);
+                $ob->edit_link = sprintf('<a target="_blank" href="/%scontacts/item/%s/edit">' . t('Edit') . '</a>', ADMINISTRATION_PATH, $ob->uid);
                 $ob->organization = !empty($u['o'][0]) ? $u['o'][0] : '';
 
                 $ob->region = array();
