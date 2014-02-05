@@ -31,7 +31,8 @@ function cms_contacts_get_filters_from_request() {
         'organization_status' => !empty($_GET['organization_status']) ? $_GET['organization_status'] : array(),
         'sSearch' => !empty($_GET['sSearch']) ? $_GET['sSearch'] : FALSE,
         'per_field_operator' => !empty($_GET['per_field_operator']) && $_GET['per_field_operator'] == 'is_one_of',
-        'operator' => !empty($_GET['operator']) && $_GET['operator'] == 'is_one_of'
+        'operator' => !empty($_GET['operator']) && $_GET['operator'] == 'is_one_of',
+        'clear_cache' => !empty($_GET['clear_cache'])
     );
     # Availability has three states
     if(isset($_GET['availability'])) {
@@ -267,6 +268,10 @@ function cms_contacts_list_ajax_listing() {
  * @return string Rendered HTML template using theme('contacts_list')
  */
 function cms_contacts_list() {
+    $filter = cms_contacts_get_filters_from_request();
+    if($filter['clear_cache']) {
+        CMSContactsCache::cache_clear_all();
+    }
     $breadcrumb = array();
     $breadcrumb[] = l(t('Home'), '<front>');
     drupal_set_breadcrumb($breadcrumb);
