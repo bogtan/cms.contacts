@@ -60,4 +60,28 @@ class CMSContactsCacheTestCase extends CMSWebTestCase {
     function test_cache_ldap_users() {
         CMSContactsCache::cache_ldap_users();
     }
+
+    function test_get_ldap_users_names() {
+        $u = CMSContactsCache::get_ldap_users_names();
+        $this->assertEqual(7730, count($u));
+        foreach($u as $k => $n) {
+            $this->assertEqual('kaipagen', $k);
+            $this->assertEqual('Kai Pagenkopf', $n);
+            break;
+        }
+
+        $u = CMSContactsCache::get_ldap_users_names('dn', 'givenname');
+        $this->assertEqual(7730, count($u));
+        foreach($u as $k => $n) {
+            $this->assertEqual('uid=kaipagen,ou=Users,o=CMS', $k);
+            $this->assertEqual('Kai', $n);
+            break;
+        }
+
+        $u = CMSContactsCache::get_ldap_users_names('xxx');
+        $this->assertEqual(0, count($u));
+
+        $u = CMSContactsCache::get_ldap_users_names('dn', 'xxx');
+        $this->assertEqual(0, count($u));
+    }
 }
