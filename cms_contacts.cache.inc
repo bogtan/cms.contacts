@@ -172,7 +172,7 @@ class CMSContactsCache {
             $ldap = CMSLDAP::get_instance();
             $filter = "(objectClass=" . CMS_CONTACT . ")";
             $attributes = array(
-                'uid', 'sn', 'givenname', 'region', 'iso2', 'o', 'cpiso2', 'cmsavailability',
+                'uid', 'cn', 'sn', 'givenname', 'region', 'iso2', 'o', 'cpiso2', 'cmsavailability',
                 'statusperson', 'statusorganization', 'mailinglists'
             );
             $true = 'TRUE';
@@ -191,6 +191,7 @@ class CMSContactsCache {
                 $ob->dn = $id;
                 $ob->uid = $u['uid'][0];
                 $ob->sn = $u['sn'][0];
+                $ob->cn = $u['cn'][0];
                 $ob->givenname = $u['givenname'][0];
                 $ob->view_link = sprintf('<a target="_blank" href="/%scontacts/item/%s/view">' . t('View') . '</a>', ADMINISTRATION_PATH, $ob->uid);
                 $ob->edit_link = sprintf('<a target="_blank" href="/%scontacts/item/%s/edit">' . t('Edit') . '</a>', ADMINISTRATION_PATH, $ob->uid);
@@ -212,7 +213,9 @@ class CMSContactsCache {
                     unset($tmp['count']);
                     $countries = array();
                     foreach($tmp as $iso2) {
-                        $countries[] = $country_cache[$iso2];
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
                     }
                     $ob->iso2 = $tmp;
                     $ob->countries = $countries;
@@ -226,7 +229,9 @@ class CMSContactsCache {
                     unset($tmp['count']);
                     $countries = array();
                     foreach($tmp as $iso2) {
-                        $countries[] = $country_cache[$iso2];
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
                     }
                     $ob->cpiso2 = $tmp;
                     $ob->countries_post = $countries;
@@ -291,4 +296,25 @@ class CMSContactsCache {
         }
         return $cache;
     }
+
+
+    /**
+     * Retrieve the LDAP user names for using inside select options. If you want custom value use parameters.
+     * @param string $key_attr (Optional) Which attribute holds the key. Default uid.
+     * @param string $value_attr (Optional) Which attribute holds the values. Default cn.
+     * @return array of strings with user uid as key
+     */
+    public static function get_ldap_users_names($key_attr = 'uid', $value_attr = 'cn') {
+        $ret = array();
+        $users = self::cache_ldap_users();
+        foreach($users as $u) {
+            if(isset($u->$key_attr) && isset($u->$value_attr)) {
+                $ret[$u->$key_attr] = $u->$value_attr;
+            } else {
+                continue;
+            }
+        }
+        return $ret;
+    }
+
 }
