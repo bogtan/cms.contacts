@@ -11,6 +11,7 @@ define('CMS_CONTACTS_CACHE_INSTRUMENT_PEOPLE', 'CMS_CONTACTS_CACHE_INSTRUMENT_PE
 define('CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE', 'CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE');
 define('CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE', 'CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE');
 define('CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE', 'CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE');
+define('CMS_CONTACTS_CACHE_ORGANIZATION', 'CMS_CONTACTS_CACHE_ORGANIZATION');
 define('CMS_CONTACTS_CACHE_LIFETIME', 3600);
 
 /**
@@ -163,7 +164,8 @@ class CMSContactsCache {
 
 
     /**
-     * Cache the LDAP contacts
+     * Cache the LDAP contacts.
+     * !WARNING! This caches incomplete records. For performance reasions, only few LDAP attributes are loaded
      * @return array Array of stdClassess with selected LDAP attributes
      */
     public static function cache_ldap_users() {
@@ -316,4 +318,51 @@ class CMSContactsCache {
         return $ret;
     }
 
+
+    /**
+     * Retrieve the list of organizations.
+     * !WARNING! This caches incomplete records. For performance reasions, only few LDAP attributes are loaded
+     * @return array Array of stdClassess with selected LDAP attributes
+     */
+    public static function cache_organizations() {
+        $cache = cache_get(CMS_CONTACTS_CACHE_ORGANIZATION);
+        if(!$cache) {
+            $ldap = CMSLDAP::get_instance();
+            $filter = "(objectClass=" . CMS_ORGANIZATION . ")";
+            $attributes = array(
+                'dn', 'oid', 'o', 'cmsavailability', 'iso2'
+            );
+            $ldap->search($ldap->base_dn, $filter, $attributes);
+            $rows = $ldap->get_entries();
+            $cache = array();
+            $true = "TRUE";
+            unset($rows['count']);
+            $country_cache = Country::get_country_names_cached();
+            foreach($rows as $u) {
+                $id = $u['dn'];
+                $ob = new stdClass();
+                $ob->dn = $id;
+                $ob->oid = $u['oid'][0];
+                $ob->cmsAvailability = $u['cmsavailability'][0] == $true;
+                if(array_key_exists('iso2', $u)) {
+                    $tmp = $u['iso2'];
+                    unset($tmp['count']);
+                    $countries = array();
+                    foreach($tmp as $iso2) {
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
+                    }
+                    $ob->iso2 = $tmp;
+                    $ob->countries = $countries;
+                    $ob->countries_rendered = implode(', ', $countries);
+                }
+                $ob->o = $u['o'][0];
+                $ob->name = $ob->o;
+
+                $cache[$id] = $ob;
+            }
+        }
+        return $cache;
+    }
 }
