@@ -212,7 +212,9 @@ class CMSContactsCache {
                     unset($tmp['count']);
                     $countries = array();
                     foreach($tmp as $iso2) {
-                        $countries[] = $country_cache[$iso2];
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
                     }
                     $ob->iso2 = $tmp;
                     $ob->countries = $countries;
@@ -226,7 +228,9 @@ class CMSContactsCache {
                     unset($tmp['count']);
                     $countries = array();
                     foreach($tmp as $iso2) {
-                        $countries[] = $country_cache[$iso2];
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
                     }
                     $ob->cpiso2 = $tmp;
                     $ob->countries_post = $countries;
