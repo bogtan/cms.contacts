@@ -84,4 +84,17 @@ class CMSContactsCacheTestCase extends CMSWebTestCase {
         $u = CMSContactsCache::get_ldap_users_names('dn', 'xxx');
         $this->assertEqual(0, count($u));
     }
+
+    function test_cache_organizations() {
+        $rows = CMSContactsCache::cache_organizations();
+        $this->assertEqual(947, count($rows));
+
+        $o = $rows['oid=phuGIhc7,ou=Organizations,o=CMS']; #oid=phuGIhc7
+        $this->assertEqual('oid=phuGIhc7,ou=Organizations,o=CMS', $o->dn);
+        $this->assertEqual('phuGIhc7', $o->oid);
+        $this->assertTrue($o->cmsAvailability);
+        $this->assertEqual(array('DE'), $o->iso2);
+        $this->assertEqual('Vorstandsreferat 01,  Internationale Angelegenheiten und Repräsentation Altes Rathaus', $o->o);
+        $this->assertEqual('Vorstandsreferat 01,  Internationale Angelegenheiten und Repräsentation Altes Rathaus', $o->name);
+    }
 }
