@@ -11,6 +11,7 @@ define('CMS_CONTACTS_CACHE_INSTRUMENT_PEOPLE', 'CMS_CONTACTS_CACHE_INSTRUMENT_PE
 define('CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE', 'CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE');
 define('CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE', 'CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE');
 define('CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE', 'CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE');
+define('CMS_CONTACTS_CACHE_ORGANIZATION', 'CMS_CONTACTS_CACHE_ORGANIZATION');
 define('CMS_CONTACTS_CACHE_LIFETIME', 3600);
 
 /**
@@ -163,7 +164,8 @@ class CMSContactsCache {
 
 
     /**
-     * Cache the LDAP contacts
+     * Cache the LDAP contacts.
+     * !WARNING! This caches incomplete records. For performance reasions, only few LDAP attributes are loaded
      * @return array Array of stdClassess with selected LDAP attributes
      */
     public static function cache_ldap_users() {
@@ -172,7 +174,7 @@ class CMSContactsCache {
             $ldap = CMSLDAP::get_instance();
             $filter = "(objectClass=" . CMS_CONTACT . ")";
             $attributes = array(
-                'uid', 'sn', 'givenname', 'region', 'iso2', 'o', 'cpiso2', 'cmsavailability',
+                'uid', 'cn', 'sn', 'givenname', 'region', 'iso2', 'o', 'cpiso2', 'cmsavailability',
                 'statusperson', 'statusorganization', 'mailinglists'
             );
             $true = 'TRUE';
@@ -191,6 +193,7 @@ class CMSContactsCache {
                 $ob->dn = $id;
                 $ob->uid = $u['uid'][0];
                 $ob->sn = $u['sn'][0];
+                $ob->cn = $u['cn'][0];
                 $ob->givenname = $u['givenname'][0];
                 $ob->view_link = sprintf('<a target="_blank" href="/%scontacts/item/%s/view">' . t('View') . '</a>', ADMINISTRATION_PATH, $ob->uid);
                 $ob->edit_link = sprintf('<a target="_blank" href="/%scontacts/item/%s/edit">' . t('Edit') . '</a>', ADMINISTRATION_PATH, $ob->uid);
@@ -212,7 +215,9 @@ class CMSContactsCache {
                     unset($tmp['count']);
                     $countries = array();
                     foreach($tmp as $iso2) {
-                        $countries[] = $country_cache[$iso2];
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
                     }
                     $ob->iso2 = $tmp;
                     $ob->countries = $countries;
@@ -226,7 +231,9 @@ class CMSContactsCache {
                     unset($tmp['count']);
                     $countries = array();
                     foreach($tmp as $iso2) {
-                        $countries[] = $country_cache[$iso2];
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
                     }
                     $ob->cpiso2 = $tmp;
                     $ob->countries_post = $countries;
@@ -288,6 +295,74 @@ class CMSContactsCache {
             }
         } else {
             $cache = $cache->data;
+        }
+        return $cache;
+    }
+
+
+    /**
+     * Retrieve the LDAP user names for using inside select options. If you want custom value use parameters.
+     * @param string $key_attr (Optional) Which attribute holds the key. Default uid.
+     * @param string $value_attr (Optional) Which attribute holds the values. Default cn.
+     * @return array of strings with user uid as key
+     */
+    public static function get_ldap_users_names($key_attr = 'uid', $value_attr = 'cn') {
+        $ret = array();
+        $users = self::cache_ldap_users();
+        foreach($users as $u) {
+            if(isset($u->$key_attr) && isset($u->$value_attr)) {
+                $ret[$u->$key_attr] = $u->$value_attr;
+            } else {
+                continue;
+            }
+        }
+        return $ret;
+    }
+
+
+    /**
+     * Retrieve the list of organizations.
+     * !WARNING! This caches incomplete records. For performance reasions, only few LDAP attributes are loaded
+     * @return array Array of stdClassess with selected LDAP attributes
+     */
+    public static function cache_organizations() {
+        $cache = cache_get(CMS_CONTACTS_CACHE_ORGANIZATION);
+        if(!$cache) {
+            $ldap = CMSLDAP::get_instance();
+            $filter = "(objectClass=" . CMS_ORGANIZATION . ")";
+            $attributes = array(
+                'dn', 'oid', 'o', 'cmsavailability', 'iso2'
+            );
+            $ldap->search($ldap->base_dn, $filter, $attributes);
+            $rows = $ldap->get_entries();
+            $cache = array();
+            $true = "TRUE";
+            unset($rows['count']);
+            $country_cache = Country::get_country_names_cached();
+            foreach($rows as $u) {
+                $id = $u['dn'];
+                $ob = new stdClass();
+                $ob->dn = $id;
+                $ob->oid = $u['oid'][0];
+                $ob->cmsAvailability = $u['cmsavailability'][0] == $true;
+                if(array_key_exists('iso2', $u)) {
+                    $tmp = $u['iso2'];
+                    unset($tmp['count']);
+                    $countries = array();
+                    foreach($tmp as $iso2) {
+                        if(isset($country_cache[$iso2])) {
+                            $countries[] = $country_cache[$iso2];
+                        }
+                    }
+                    $ob->iso2 = $tmp;
+                    $ob->countries = $countries;
+                    $ob->countries_rendered = implode(', ', $countries);
+                }
+                $ob->o = $u['o'][0];
+                $ob->name = $ob->o;
+
+                $cache[$id] = $ob;
+            }
         }
         return $cache;
     }
