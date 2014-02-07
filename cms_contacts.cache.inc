@@ -12,6 +12,7 @@ define('CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE', 'CMS_CONTACTS_CACHE_MAILINGLIST_
 define('CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE', 'CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE');
 define('CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE', 'CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE');
 define('CMS_CONTACTS_CACHE_ORGANIZATION', 'CMS_CONTACTS_CACHE_ORGANIZATION');
+define('CMS_CONTACTS_CACHE_NFP_LISTS', 'CMS_CONTACTS_NFP_LISTS');
 define('CMS_CONTACTS_CACHE_LIFETIME', 3600);
 
 /**
@@ -28,6 +29,7 @@ class CMSContactsCache {
         cache_clear_all(CMS_CONTACTS_CACHE_MAILINGLIST_PEOPLE, 'cache');
         cache_clear_all(CMS_CONTACTS_CACHE_STATUS_PERSON_PEOPLE, 'cache');
         cache_clear_all(CMS_CONTACTS_CACHE_STATUS_ORGANIZATION_PEOPLE, 'cache');
+        cache_clear_all(CMS_CONTACTS_CACHE_NFP_LISTS, 'cache');
     }
 
     /**
@@ -363,6 +365,37 @@ class CMSContactsCache {
 
                 $cache[$id] = $ob;
             }
+        }
+        return $cache;
+    }
+
+    public static function cache_nfp_lists() {
+        $cache = cache_get(CMS_CONTACTS_CACHE_NFP_LISTS);
+        if(!$cache) {
+            $ldap = CMSLDAP::get_instance();
+            $filter = "(objectClass=" . CMS_COUNTRY_NFP . ")";
+            $attributes = array('dn', 'iso2', 'uuid', 'uniquemember');
+            $ldap->search($ldap->base_dn, $filter, $attributes);
+            $rows = $ldap->get_entries();
+            unset($rows['count']);
+            $cache = array();
+            foreach ($rows as $row) {
+                $ob = new stdClass();
+                $dn = $row['dn'];
+                unset($row['iso2']['count']);
+                unset($row['uuid']['count']);
+                unset($row['uniquemember']['count']);
+                $ob->iso2 = $row['iso2'][0];
+                $ob->uuid = $row['uuid'][0];
+                $ob->uniquemember = $row['uniquemember'];
+                $cache[$dn] = $ob;
+            }
+            if (!empty($cache)) {
+                # Create cache and keep it for 1 hour
+                cache_set(CMS_CONTACTS_CACHE_NFP_LISTS, $cache, 'cache', time() + CMS_CONTACTS_CACHE_LIFETIME);
+            }
+        } else {
+            $cache = $cache->data;
         }
         return $cache;
     }
