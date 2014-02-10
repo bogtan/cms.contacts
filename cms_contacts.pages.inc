@@ -690,6 +690,9 @@ function contacts_add($type) {
 
     drupal_set_breadcrumb($breadcrumb);
 
+    // Fix Chosen controls when return from Ajax call (SELECTs are broken)
+    drupal_add_js('jQuery(document).ajaxSuccess(function() { jQuery("select.chosen-select-ctrl").chosen(); });', 'inline');
+
     switch($type) {
         case 'contact':
             return drupal_get_form('cms_contacts_form', array());
