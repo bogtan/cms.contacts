@@ -527,6 +527,7 @@ function cms_contacts_form_submit($form, &$form_state) {
         $form_state['rebuild'] = TRUE;
     }else {
         $data = CMSContacts::prepare_user_data($form_state['values'], $edit);
+
         $user_data = $data['user_data'];
 
         if ((isset($form['#contact']) && (!empty($form['#contact'])))) {
@@ -553,6 +554,27 @@ function cms_contacts_form_submit($form, &$form_state) {
                     }
                 }
 
+                if (array_key_exists('status_organization_data', $data) && !empty($data['status_organization_data'])) {
+                    foreach ($data['status_organization_data'] as $group_dn => $group_data) {
+                        $query = $agent->search($agent->base_dn, "(&(objectClass=" . CMS_INSTRUMENT_STATUS_ORGANIZATION . ")(o={$group_data['o']})(cn={$group_data['cn']})(uuid={$group_data['uuid']}))");
+                        $result = $agent->get_entries();
+
+                        if (!$result['count']) {
+                            $group = array(
+                                'objectClass' => array('top', CMS_INSTRUMENT_STATUS_ORGANIZATION),
+                                'cn' => $group_data['cn'],
+                                'o' => $group_data['o'],
+                                'uuid' => $group_data['uuid'],
+                                'uniqueMember' => $user['dn'],
+                            );
+
+                            $agent->add($group_dn, $group);
+                        }elseif (!in_array($user['dn'], $result['uniqueMember'])) {
+                            $agent->add_to_group($result['dn'], array('uniqueMember' => $user['dn']));
+                        }
+                    }
+                }
+
 //            CMSContacts::set_contact_related_content($uid, $form_state['values']['species'], 'species', 'field_species_experts');
 //            CMSContacts::set_contact_related_content($uid, $form_state['values']['meetings'], 'meeting', 'field_meeting_participants');
                 CMSContacts::update_user_groups($agent, $uid, $site_uuid, $user_data, FALSE);
@@ -561,6 +583,9 @@ function cms_contacts_form_submit($form, &$form_state) {
 
                 // Update cache
                 CMSContactsCache::cache_clear_all();
+                CMSContacts::update_ldap_users_cache();
+                CMSContacts::update_ldap_instruments_cache();
+                CMSContacts::update_ldap_taxonomies_cache();
 
                 // Redirect to contact page
                 $semaphore = variable_get('cron_semaphore', FALSE);

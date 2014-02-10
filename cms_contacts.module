@@ -621,6 +621,7 @@ class CMSContacts extends CMSBase {
         );
 
         $nfp_data = array();
+        $so_data = array();
 
         // Manually manipulate different cases for LDAP attributes
         foreach (CMSContacts::$user_fields as $field => $ldap_field) {
@@ -642,6 +643,26 @@ class CMSContacts extends CMSBase {
                         }
                     }
                 }elseif ($field == 'status_organization_fieldset') {
+                    $ldap_data[$ldap_field] = array();
+                    $so_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
+                    foreach ($data[$field] as $index => $value) {
+                        $cn = '';
+                        if (isset($value['organization_status']) && !empty($value['organization_status']) && array_key_exists($value['organization_status'], $so_cache)) {
+                            $cn = $so_cache[$value['organization_status']]['cn'][0];
+                        }
+
+                        if (isset($cn) && !empty($cn) && isset($value['instrument']) && !empty($value['instrument'])) {
+                            $dn = "o={$value['name']},cn={$cn},ou=Status Organization,{$value['instrument']}";
+                            $so_data[$dn] = array(
+                                'o' => $value['name'],
+                                'cn' => $cn,
+                                'uuid' => $value['instrument'],
+
+                            );
+                        }elseif (isset($value['organization_status']) && !empty($value['organization_status'])) {
+                            $ldap_data[$ldap_field][] = $value['organization_status'];
+                        }
+                    }
                 }elseif($field == 'preferred_language'){
                     if (!empty($data[$field])) {
                         $preferred_languages = array();
@@ -688,6 +709,7 @@ class CMSContacts extends CMSBase {
         return array(
             'user_data' => $ldap_data,
             'nfp_data' => $nfp_data,
+            'status_organization_data' => $so_data,
         );
     }
 
