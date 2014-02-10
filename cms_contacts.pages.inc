@@ -18,7 +18,7 @@ define('AVAILABILITY_STATUSES', serialize(array("TRUE", "FALSE")));
 define('DEFAULT_CONTACTS_FILTER_OPERATOR', serialize(array("is_all_of", "is_one_of")));
 
 function cms_contacts_get_url() {
-    return '/' . ADMINISTRATION_PATH . 'contacts/listing';
+    return ADMINISTRATION_PATH . 'contacts/listing';
 }
 
 
@@ -431,6 +431,12 @@ function contacts_view($contact_id) {
 
     $contact['mailinglists'] = implode("<br />\n", CMSContacts::get_friendly_title_groups_for_contact(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache', $contact['dn']));
 
+    $countries_nfp = CMSContacts::contact_countries_nfp($contact_id);
+    $contact['countries_nfp'] = '';
+    if (!empty($countries_nfp)) {
+        $contact['countries_nfp'] = implode('<br />', $countries_nfp);
+    }
+
     $contact['species'] = CMSContacts::get_contact_related_content($contact_id, 'species', 'field_species_experts');
     $contact['meetings'] = CMSContacts::get_contact_related_content($contact_id, 'meeting', 'field_meeting_participants');
 
@@ -520,7 +526,8 @@ function cms_contacts_form_submit($form, &$form_state) {
         drupal_set_message(t('Unable to determine site UUID! Please contact the site administrator'), 'error');
         $form_state['rebuild'] = TRUE;
     }else {
-        $user_data = CMSContacts::prepare_user_data($form_state['values'], $edit);
+        $data = CMSContacts::prepare_user_data($form_state['values'], $edit);
+        $user_data = $data['user_data'];
 
         if ((isset($form['#contact']) && (!empty($form['#contact'])))) {
             $uid = $form['#contact']['uid'][0];
@@ -533,7 +540,6 @@ function cms_contacts_form_submit($form, &$form_state) {
         $t_args = array('@type' => 'Contact', '%title' => $user_data['sn'][0] . ' ' . $user_data['givenName'][0]);
 
         $agent = CMSLDAP::get_instance();
-
         if ($edit) {
             // Edit form
             $user = $form['#contact'];
@@ -541,6 +547,12 @@ function cms_contacts_form_submit($form, &$form_state) {
                 drupal_set_message(t('The contact could not be saved.'), 'error');
                 $form_state['rebuild'] = TRUE;
             }else {
+                if (array_key_exists('nfp_data', $data) && !empty($data['nfp_data'])) {
+                    foreach ($data['nfp_data'] as $index => $group_dn) {
+                        $agent->add_to_group($group_dn, array('uniqueMember' => $user['dn']));
+                    }
+                }
+
 //            CMSContacts::set_contact_related_content($uid, $form_state['values']['species'], 'species', 'field_species_experts');
 //            CMSContacts::set_contact_related_content($uid, $form_state['values']['meetings'], 'meeting', 'field_meeting_participants');
                 CMSContacts::update_user_groups($agent, $uid, $site_uuid, $user_data, FALSE);
@@ -548,9 +560,7 @@ function cms_contacts_form_submit($form, &$form_state) {
                 drupal_set_message(t('@type %title has been updated.', $t_args));
 
                 // Update cache
-                CMSContacts::update_ldap_users_cache();
-                CMSContacts::update_ldap_instruments_cache();
-                CMSContacts::update_ldap_taxonomies_cache();
+                CMSContactsCache::cache_clear_all();
 
                 // Redirect to contact page
                 $semaphore = variable_get('cron_semaphore', FALSE);
@@ -740,6 +750,10 @@ function contacts_edit($contact_id) {
     drupal_set_breadcrumb($breadcrumb);
     $page_title = $contact['givenname'][0] . ' ' . $contact['sn'][0];
     drupal_set_title(t('<em>Edit @type</em> @title', array('@type' => 'Contact', '@title' => $page_title)), PASS_THROUGH);
+
+    // Fix Chosen controls when return from Ajax call (SELECTs are broken)
+    drupal_add_js('jQuery(document).ajaxSuccess(function() { jQuery("select.chosen-select-ctrl").chosen(); });', 'inline');
+
     return drupal_get_form('cms_contacts_form', $contact);
 }
 

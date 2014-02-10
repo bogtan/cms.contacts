@@ -336,9 +336,9 @@ class CMSContacts extends CMSBase {
         'description' => 'description',
         'region' => 'region',
         'availability' => 'cmsAvailability',
-        'organization_status' => 'statusOrganization',
+        'status_organization_fieldset' => 'statusOrganization',
         'mailing_list' => 'mailingLists',
-        'person_status' => 'statusPerson',
+        'status_person_fieldset' => 'statusPerson',
         'preferred_language' => 'preferredLanguages',
         'additional_emails' => 'additionalEmails',
     );
@@ -608,7 +608,7 @@ class CMSContacts extends CMSBase {
 
         // Manually set attributes that are not coming from the Contacts' add/edit form
         $ldap_data = array(
-            'objectclass' => array(
+            'objectClass' => array(
                 'top',
                 'cmsContact',
             ),
@@ -620,16 +620,28 @@ class CMSContacts extends CMSBase {
             ),
         );
 
+        $nfp_data = array();
+
         // Manually manipulate different cases for LDAP attributes
         foreach (CMSContacts::$user_fields as $field => $ldap_field) {
             if (isset($data[$field]) && (!empty($data[$field]))) {
-                if (in_array($field, array('mailing_list', 'organization_status', 'person_status', 'conventions'))) {
+                if (in_array($field, array('mailing_list', 'conventions'))) {
                     $ldap_data[$ldap_field] = array_keys($data[$field]);
                 }elseif ($field == 'region') {
                     $term = taxonomy_term_load($data[$field]);
                     if ($term && $term->vocabulary_machine_name == VOC_REGION) {
                         $ldap_data[$ldap_field][] = $term->name;
                     }
+                }elseif ($field == 'status_person_fieldset') {
+                    $ldap_data[$ldap_field] = array();
+                    foreach ($data[$field] as $index => $value) {
+                        if (isset($value['country']) && !empty($value['country']) && isset($value['instrument']) && !empty($value['instrument'])) {
+                            $nfp_data[] = "iso2={$value['country']},{$value['instrument']}";
+                        }elseif (isset($value['person_status']) && !empty($value['person_status'])) {
+                            $ldap_data[$ldap_field][] = $value['person_status'];
+                        }
+                    }
+                }elseif ($field == 'status_organization_fieldset') {
                 }elseif($field == 'preferred_language'){
                     if (!empty($data[$field])) {
                         $preferred_languages = array();
@@ -673,7 +685,10 @@ class CMSContacts extends CMSBase {
             }
         }
 
-        return $ldap_data;
+        return array(
+            'user_data' => $ldap_data,
+            'nfp_data' => $nfp_data,
+        );
     }
 
     /**
@@ -1469,5 +1484,22 @@ class CMSContacts extends CMSBase {
                 @$agent->delete_from_group($group_dn, array('uniquemember' => $dn));
             }
         }
+    }
+
+    public static function contact_countries_nfp($contact_id) {
+        $people_dn = variable_get(LDAP_PEOPLE_DN, '');
+        $contact_dn = "uid={$contact_id},{$people_dn}";
+        $nfp_lists_cache = CMSContactsCache::cache_nfp_lists();
+        $countries_cache = Country::get_country_names_cached();
+        $instruments_cache = CMSLegalInstrument::list_keyed_by_uuid();
+        $countries = array();
+        foreach ($nfp_lists_cache as $list) {
+            if (in_array($contact_dn, $list->uniquemember)) {
+                $instrument_name = (array_key_exists($list->uuid, $instruments_cache)) ? $instruments_cache[$list->uuid] : t('Unknown instrument');
+                $countries[] = (array_key_exists($list->iso2, $countries_cache)) ? "{$countries_cache[$list->iso2]} ({$instrument_name})" : "{$list->iso2} ({$instrument_name})";
+            }
+        }
+
+        return $countries;
     }
 }
