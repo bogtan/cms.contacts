@@ -522,6 +522,7 @@ function cms_contacts_form_submit($form, &$form_state) {
     $edit = (isset($form['#contact']) && (!empty($form['#contact']))) ? TRUE : FALSE;
 
     $site_uuid = variable_get('site_uuid', '');
+
     if (!$site_uuid) {
         drupal_set_message(t('Unable to determine site UUID! Please contact the site administrator'), 'error');
         $form_state['rebuild'] = TRUE;
@@ -775,6 +776,8 @@ function contacts_edit($contact_id) {
     $breadcrumb[] = l(t('Contacts'), cms_contacts_get_url());
     $breadcrumb[] = l($contact['givenname'][0] . ' ' . $contact['sn'][0], ADMINISTRATION_PATH . 'contacts/item/' . $contact_id . '/view');
 
+    $contact['instrument_data'] = CMSContacts::get_data_by_instrument($contact_id);
+
     drupal_set_breadcrumb($breadcrumb);
     $page_title = $contact['givenname'][0] . ' ' . $contact['sn'][0];
     drupal_set_title(t('<em>Edit @type</em> @title', array('@type' => 'Contact', '@title' => $page_title)), PASS_THROUGH);
@@ -784,7 +787,6 @@ function contacts_edit($contact_id) {
 
     return drupal_get_form('cms_contacts_form', $contact);
 }
-
 
 
 /**

@@ -73,6 +73,7 @@ function cms_contacts_permission() {
  */
 function cms_contacts_access($permission, $account = NULL) {
     global $user;
+    global $user;
 
     if (!isset($account)) {
         $account = $user;
@@ -317,7 +318,6 @@ class CMSContacts extends CMSBase {
     private static $user_fields = array(
         'first_name' => 'givenName',
         'last_name' => 'sn',
-        'conventions' => 'conventions',
         'personal_title' => 'personalTitle',
         'position' => 'title',
         'country' => 'iso2',
@@ -341,6 +341,7 @@ class CMSContacts extends CMSBase {
         'status_person_fieldset' => 'statusPerson',
         'preferred_language' => 'preferredLanguages',
         'additional_emails' => 'additionalEmails',
+        'instrument_fieldset' => 'conventions',
     );
 
     // Map Organization form fields to LDAP cmsOrganization attributes
@@ -633,34 +634,27 @@ class CMSContacts extends CMSBase {
                     if ($term && $term->vocabulary_machine_name == VOC_REGION) {
                         $ldap_data[$ldap_field][] = $term->name;
                     }
-                }elseif ($field == 'status_person_fieldset') {
-                    $ldap_data[$ldap_field] = array();
-                    foreach ($data[$field] as $index => $value) {
-                        if (isset($value['country']) && !empty($value['country']) && isset($value['instrument']) && !empty($value['instrument'])) {
-                            $nfp_data[] = "iso2={$value['country']},{$value['instrument']}";
-                        }elseif (isset($value['person_status']) && !empty($value['person_status'])) {
-                            $ldap_data[$ldap_field][] = $value['person_status'];
-                        }
-                    }
-                }elseif ($field == 'status_organization_fieldset') {
-                    $ldap_data[$ldap_field] = array();
-                    $so_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
-                    foreach ($data[$field] as $index => $value) {
-                        $cn = '';
-                        if (isset($value['organization_status']) && !empty($value['organization_status']) && array_key_exists($value['organization_status'], $so_cache)) {
-                            $cn = $so_cache[$value['organization_status']]['cn'][0];
-                        }
+                }elseif ($field == 'instrument_fieldset') {
+                    $ldap_data['conventions'] = array();
+                    $ldap_data['statusPerson'] = array();
+                    $ldap_data['statusOrganization'] = array();
+                    $ldap_data['mailingLists'] = array();
 
-                        if (isset($cn) && !empty($cn) && isset($value['instrument']) && !empty($value['instrument'])) {
-                            $dn = "o={$value['name']},cn={$cn},ou=Status Organization,{$value['instrument']}";
-                            $so_data[$dn] = array(
-                                'o' => $value['name'],
-                                'cn' => $cn,
-                                'uuid' => $value['instrument'],
+                    foreach ($data[$field] as $index => $value) {
+                        if (isset($value['instrument'])) {
+                            $ldap_data['conventions'][] = $value['instrument'];
 
-                            );
-                        }elseif (isset($value['organization_status']) && !empty($value['organization_status'])) {
-                            $ldap_data[$ldap_field][] = $value['organization_status'];
+                            if (isset($value['person_status'])) {
+                                $ldap_data['statusPerson'] = array_merge($ldap_data['statusPerson'], array_values($value['person_status']));
+                            }
+
+                            if (isset($value['organization_status'])) {
+                                $ldap_data['statusOrganization'] = array_merge($ldap_data['statusOrganization'], array_values($value['organization_status']));
+                            }
+
+                            if (isset($value['mailing_list'])) {
+                                $ldap_data['mailingLists'] = array_merge($ldap_data['mailingLists'], array_values($value['mailing_list']));
+                            }
                         }
                     }
                 }elseif($field == 'preferred_language'){
@@ -709,7 +703,6 @@ class CMSContacts extends CMSBase {
         return array(
             'user_data' => $ldap_data,
             'nfp_data' => $nfp_data,
-            'status_organization_data' => $so_data,
         );
     }
 
@@ -1406,13 +1399,14 @@ class CMSContacts extends CMSBase {
     public static function create_form_options_for_field($cid = '', $callback = '') {
         $options = array();
         $cache = CMSContacts::get_or_create_ldap_cache($cid, $callback);
+        $instruments_cache = CMSLegalInstrument::list_keyed_by_uuid();
         $instrument_uuid = variable_get('site_uuid', '');
         if (!$instrument_uuid) {
             drupal_set_message('Unable to determine site UUID!', 'error');
         }elseif ($cache) {
             foreach ($cache as $dn => $item) {
-                if ($item['uuid'][0] == $instrument_uuid && !array_key_exists($dn, array_keys($options))) {
-                    $options[$dn] = $item['cn'][0];
+                if (!array_key_exists($dn, array_keys($options))) {
+                    $options[$dn] = $item['cn'][0] . " (" .$instruments_cache[$item['uuid'][0]] . ")";
                 }
             }
         }
@@ -1523,5 +1517,71 @@ class CMSContacts extends CMSBase {
         }
 
         return $countries;
+    }
+
+    public static function get_data_by_instrument($contact_id) {
+        $people_dn = variable_get(LDAP_PEOPLE_DN, '');
+        $contact_dn = "uid={$contact_id},{$people_dn}";
+
+        $spp_cache = CMSContactsCache::cache_statusperson_people();
+        $sp_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache');
+
+        $data = $sp = $so = $ml = array();
+
+        foreach ($spp_cache as $sp_dn => $members) {
+            if (in_array($contact_dn, $members) && array_key_exists($sp_dn, $sp_cache)) {
+                $sp[$sp_cache[$sp_dn]['uuid'][0]][] = $sp_cache[$sp_dn]['dn'];
+            }
+        }
+
+        $sop_cache = CMSContactsCache::cache_statusorganization_people();
+        $so_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
+
+        foreach ($sop_cache as $so_dn => $members) {
+            if (in_array($contact_dn, $members) && array_key_exists($so_dn, $so_cache)) {
+                $so[$so_cache[$so_dn]['uuid'][0]][] = $so_cache[$so_dn]['dn'];
+            }
+        }
+
+        $mlp_cache = CMSContactsCache::cache_mailinglist_people();
+        $ml_cache = CMSContacts::get_or_create_ldap_cache(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache');
+
+        foreach ($mlp_cache as $ml_dn => $members) {
+            if (in_array($contact_dn, $members) && array_key_exists($ml_dn, $ml_cache)) {
+                $ml[$ml_cache[$ml_dn]['uuid'][0]][] = $ml_cache[$ml_dn]['dn'];
+            }
+        }
+
+        foreach ($sp as $uuid => $values) {
+            if (!array_key_exists($uuid, $data)) {
+                $data[$uuid] = array();
+            }
+
+            foreach ($values as $list) {
+                $data[$uuid]['status_person'][] = $list;
+            }
+        }
+
+        foreach ($so as $uuid => $values) {
+            if (!array_key_exists($uuid, $data)) {
+                $data[$uuid] = array();
+            }
+
+            foreach ($values as $list) {
+                $data[$uuid]['status_organization'][] = $list;
+            }
+        }
+
+        foreach ($ml as $uuid => $values) {
+            if (!array_key_exists($uuid, $data)) {
+                $data[$uuid] = array();
+            }
+
+            foreach ($values as $list) {
+                $data[$uuid]['mailing_list'][] = $list;
+            }
+        }
+
+        return $data;
     }
 }

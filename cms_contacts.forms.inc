@@ -126,13 +126,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#maxlength' => 512,
     );
 
-    $form['personal_email'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Personal email'),
-        '#default_value' => isset($contact['personalemail'][0]) ? $contact['personalemail'][0] : '',
-        '#size' => 30,
-    );
-
     $work_phone_default = CMSContacts::get_multiple_attribute($contact, 'workphonenumbers');
     $form['work_phone'] = array(
         '#type' => 'textfield',
@@ -141,6 +134,130 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#size' => 30,
         '#description' => t('Separate multiple entries with a comma.'),
         '#maxlength' => 512,
+    );
+
+    $fax_default = CMSContacts::get_multiple_attribute($contact, 'faxnumbers');
+    $form['fax_number'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Fax'),
+        '#default_value' => isset($fax_default) ? $fax_default : '',
+        '#size' => 30,
+        '#description' => t('Separate multiple entries with a comma.'),
+        '#maxlength' => 512,
+    );
+
+    $form['position'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Position'),
+        '#default_value' => isset($contact['title'][0]) ? $contact['title'][0] : '',
+        '#size' => 30,
+    );
+
+
+    // Status person
+    // Field with multiple values
+    $form['instrument_fieldset'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('CMS Instrument related details'),
+        // Set up the wrapper so that AJAX will be able to replace the fieldset.
+        '#prefix' => '<div id="instrument-fieldset-wrapper">',
+        '#suffix' => '</div><div class="clear">&nbsp;</div><br />',
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+    );
+
+    // Build the fieldset with the proper number of names. We'll use
+    // $form_state['num_status_person'] to determine the number of textfields to build.
+    $person_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache');
+    $organization_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
+    $mailing_lists = CMSContacts::create_form_options_for_field(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache');
+
+    if (empty($form_state['num_instrument'])) {
+        $form_state['num_instrument'] = (!empty($contact['instrument_data'])) ? count($contact['instrument_data']) : 1;
+    }
+
+    for ($i = 0; $i < $form_state['num_instrument']; $i++) {
+        $instrument_uuid = array_keys($contact['instrument_data'])[$i];
+
+        $form['instrument_fieldset'][$i]['instrument'] = array(
+            '#type' => 'select',
+            '#required' => FALSE,
+            '#multiple' => FALSE,
+            '#title' => t('CMS Instrument'),
+            '#default_value' => isset($instrument_uuid) ? "uuid=" . $instrument_uuid . "," . variable_get(LDAP_BASE_DN) : '',
+            '#options' => $instruments_options,
+            '#size' => 5,
+            '#attributes' => array(
+                'class' => array('chosen-select-ctrl')
+            ),
+        );
+
+        $form['instrument_fieldset'][$i]['person_status'] = array(
+            '#type' => 'select',
+            '#multiple' => TRUE,
+            '#title' => t('Status person'),
+            '#default_value' => (!empty($contact['instrument_data'][$instrument_uuid]['status_person'])) ? $contact['instrument_data'][$instrument_uuid]['status_person'] : '',
+            '#options' => $person_statuses,
+            '#size' => 5,
+            '#attributes' => array(
+                'class' => array('chosen-select-ctrl')
+            ),
+        );
+
+        $form['instrument_fieldset'][$i]['organization_status'] = array(
+            '#type' => 'select',
+            '#multiple' => TRUE,
+            '#title' => t('Status organization'),
+            '#default_value' => (!empty($contact['instrument_data'][$instrument_uuid]['status_organization'])) ? $contact['instrument_data'][$instrument_uuid]['status_organization'] : '',
+            '#options' => $organization_statuses,
+            '#attributes' => array(
+                'class' => array('chosen-select-ctrl')
+            ),
+        );
+
+        $form['instrument_fieldset'][$i]['mailing_list'] = array(
+            '#type' => 'select',
+            '#multiple' => TRUE,
+            '#title' => t('Mailing lists'),
+            '#default_value' => (!empty($contact['instrument_data'][$instrument_uuid]['mailing_list'])) ? $contact['instrument_data'][$instrument_uuid]['mailing_list'] : '',
+            '#options' => $mailing_lists,
+            '#attributes' => array(
+                'class' => array('chosen-select-ctrl')
+            ),
+            '#size' => 5,
+            '#suffix' => '<br />',
+        );
+
+
+    }
+
+    $form['instrument_fieldset']['add_instrument'] = array(
+        '#type' => 'submit',
+        '#value' => t('Add more'),
+        '#name' => 'add_instrument_submit',
+        '#submit' => array('cms_contacts_form_add_more_add_one_instrument'),
+        '#ajax' => array(
+            'callback' => 'cms_contacts_form_instrument_callback',
+            'wrapper' => 'instrument-fieldset-wrapper',
+        ),
+    );
+    if ($form_state['num_instrument'] > 1) {
+        $form['instrument_fieldset']['remove_last_instrument'] = array(
+            '#type' => 'submit',
+            '#value' => t('Remove last added'),
+            '#submit' => array('cms_contacts_form_remove_one_instrument'),
+            '#ajax' => array(
+                'callback' => 'cms_contacts_form_instrument_callback',
+                'wrapper' => 'instrument-fieldset-wrapper',
+            ),
+        );
+    }
+
+    $form['personal_email'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Personal email'),
+        '#default_value' => isset($contact['personalemail'][0]) ? $contact['personalemail'][0] : '',
+        '#size' => 30,
     );
 
     $form['home_phone'] = array(
@@ -155,16 +272,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#type' => 'textfield',
         '#title' => t('Mobile'),
         '#default_value' => isset($mobile_phone_default) ? $mobile_phone_default : '',
-        '#size' => 30,
-        '#description' => t('Separate multiple entries with a comma.'),
-        '#maxlength' => 512,
-    );
-
-    $fax_default = CMSContacts::get_multiple_attribute($contact, 'faxnumbers');
-    $form['fax_number'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Fax'),
-        '#default_value' => isset($fax_default) ? $fax_default : '',
         '#size' => 30,
         '#description' => t('Separate multiple entries with a comma.'),
         '#maxlength' => 512,
@@ -197,23 +304,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#maxlength' => 512,
     );
 
-    $form['position'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Position'),
-        '#default_value' => isset($contact['title'][0]) ? $contact['title'][0] : '',
-        '#size' => 30,
-    );
-
-    $form['conventions'] = array(
-        '#type' => 'select',
-        '#required' => TRUE,
-        '#multiple' => TRUE,
-        '#title' => t('CMS Instruments'),
-        '#default_value' => isset($contact_instruments) ? $contact_instruments : '',
-        '#options' => $instruments_options,
-        '#size' => 5,
-    );
-
     $form['country_post'] = array(
         '#type' => 'select',
         '#title' => t('Country post'),
@@ -229,28 +319,12 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#maxlength' => 512,
     );
 
-
-
     $form['department'] = array(
         '#type' => 'textfield',
         '#title' => t('Department'),
         '#default_value' => isset($contact['ou'][0]) ? $contact['ou'][0] : '',
         '#size' => 30,
         '#maxlength' => 512,
-    );
-
-    $mailing_lists = CMSContacts::create_form_options_for_field(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache');
-    $contact_mailing_lists = array();
-    if ($contact_dn) {
-        $contact_mailing_lists = CMSContacts::get_groups_for_contact(CMSContacts::$mailing_list_cache, 'update_ldap_taxonomies_cache', $contact_dn, $site_uuid);
-    }
-    $form['mailing_list'] = array(
-        '#type' => 'select',
-        '#multiple' => TRUE,
-        '#title' => t('Mailing lists'),
-        '#default_value' => (!empty($contact_mailing_lists)) ? $contact_mailing_lists : '',
-        '#options' => $mailing_lists,
-        '#size' => 5,
     );
 
     $languages = CMSUtils::vocabulary_get_terms(VOC_UN_LANGUAGES);
@@ -361,164 +435,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#default_value' => isset($contact['description'][0]) ? $contact['description'][0] : '',
         '#rows' => 5,
     );
-
-    // Status person
-    // Field with multiple values
-    $form['status_person_fieldset'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Status person'),
-        // Set up the wrapper so that AJAX will be able to replace the fieldset.
-        '#prefix' => '<div id="status-person-fieldset-wrapper">',
-        '#suffix' => '</div><div class="clear">&nbsp;</div><br />',
-        '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
-    );
-
-    // Build the fieldset with the proper number of names. We'll use
-    // $form_state['num_status_person'] to determine the number of textfields to build.
-    $person_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache');
-    $contact_statuses = array();
-    if ($contact_dn) {
-        $contact_statuses = CMSContacts::get_groups_for_contact(CMSContacts::$status_person_cache, 'update_ldap_taxonomies_cache', $contact_dn, $site_uuid);
-    }
-
-    if (empty($form_state['num_status_person'])) {
-        $form_state['num_status_person'] = (!empty($contact_statuses)) ? count($contact_statuses) : 1;
-    }
-
-    for ($i = 0; $i < $form_state['num_status_person']; $i++) {
-        $form['status_person_fieldset'][$i]['person_status'] = array(
-            '#type' => 'select',
-            '#multiple' => FALSE,
-            '#title' => t('Status person'),
-            '#default_value' => (!empty($contact_statuses[$i])) ? $contact_statuses[$i] : '',
-            '#options' => $person_statuses,
-            '#size' => 5,
-            '#attributes' => array(
-                'class' => array('chosen-select-ctrl')
-            ),
-        );
-
-        $form['status_person_fieldset'][$i]['country'] = array(
-            '#type' => 'select',
-            '#title' => t('Country'),
-            '#options' => $country_options,
-            '#attributes' => array(
-                'class' => array('chosen-select-ctrl')
-            ),
-        );
-
-        $form['status_person_fieldset'][$i]['instrument'] = array(
-            '#type' => 'select',
-            '#required' => FALSE,
-            '#multiple' => FALSE,
-            '#title' => t('CMS Instrument'),
-//            '#default_value' => isset($contact_instruments) ? $contact_instruments : '',
-            '#options' => $instruments_options,
-            '#size' => 5,
-            '#attributes' => array(
-                'class' => array('chosen-select-ctrl')
-            ),
-            '#suffix' => '<br />',
-        );
-    }
-
-    $form['status_person_fieldset']['add_status_person'] = array(
-        '#type' => 'submit',
-        '#value' => t('Add more'),
-        '#name' => 'add_st_pers_submit',
-        '#submit' => array('cms_contacts_form_add_more_add_one_status_person'),
-        '#ajax' => array(
-            'callback' => 'cms_contacts_form_status_person_callback',
-            'wrapper' => 'status-person-fieldset-wrapper',
-        ),
-    );
-    if ($form_state['num_status_person'] > 1) {
-        $form['status_person_fieldset']['remove_last_status_person'] = array(
-            '#type' => 'submit',
-            '#value' => t('Remove last added'),
-            '#submit' => array('cms_contacts_form_remove_one_status_person'),
-            '#ajax' => array(
-                'callback' => 'cms_contacts_form_status_person_callback',
-                'wrapper' => 'status-person-fieldset-wrapper',
-            ),
-        );
-    }
-
-    // Status organization
-    // Field with multiple values
-    $form['status_organization_fieldset'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Status organization'),
-        '#prefix' => '<div id="status-organization-fieldset-wrapper">',
-        '#suffix' => '</div><div class="clear">&nbsp;</div><br />',
-        '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
-    );
-
-    $organization_statuses = CMSContacts::create_form_options_for_field(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache');
-    $contact_org_statuses = array();
-    if ($contact_dn) {
-        $contact_org_statuses = CMSContacts::get_groups_for_contact(CMSContacts::$status_organization_cache, 'update_ldap_taxonomies_cache', $contact_dn, $site_uuid);
-    }
-
-    if (empty($form_state['num_status_organization'])) {
-        $form_state['num_status_organization'] = (!empty($contact_org_statuses)) ? count($contact_org_statuses) : 1;
-    }
-
-    for ($i = 0; $i < $form_state['num_status_organization']; $i++) {
-        $form['status_organization_fieldset'][$i]['name'] = array(
-            '#type' => 'textfield',
-            '#title' => t('Organization name'),
-        );
-
-        $form['status_organization_fieldset'][$i]['instrument'] = array(
-            '#type' => 'select',
-            '#required' => FALSE,
-            '#multiple' => FALSE,
-            '#title' => t('CMS Instrument'),
-            '#options' => $instruments_options,
-            '#size' => 5,
-            '#attributes' => array(
-                'class' => array('chosen-select-ctrl')
-            ),
-        );
-
-        $form['status_organization_fieldset'][$i]['organization_status'] = array(
-            '#type' => 'select',
-            '#multiple' => FALSE,
-            '#title' => t('Status organization'),
-            '#default_value' => (!empty($contact_org_statuses[$i])) ? $contact_org_statuses[$i] : '',
-            '#options' => $organization_statuses,
-            '#attributes' => array(
-                'class' => array('chosen-select-ctrl')
-            ),
-            '#suffix' => '<br />',
-        );
-    }
-
-    $form['status_organization_fieldset']['add_status_organization'] = array(
-        '#type' => 'submit',
-        '#value' => t('Add more'),
-        '#name' => 'add_st_org_submit',
-        '#submit' => array('cms_contacts_form_add_more_add_one_status_organization'),
-        '#ajax' => array(
-            'callback' => 'cms_contacts_form_status_organization_callback',
-            'wrapper' => 'status-organization-fieldset-wrapper',
-        ),
-    );
-
-    if ($form_state['num_status_organization'] > 1) {
-        $form['status_organization_fieldset']['remove_last_status_organization'] = array(
-            '#type' => 'submit',
-            '#value' => t('Remove last added'),
-            '#submit' => array('cms_contacts_form_remove_one_status_organization'),
-            '#ajax' => array(
-                'callback' => 'cms_contacts_form_status_organization_callback',
-                'wrapper' => 'status-organization-fieldset-wrapper',
-            ),
-        );
-    }
 
     return $form;
 }
@@ -784,8 +700,8 @@ function organization_form($form, &$form_state, $organization) {
  *
  * Selects and returns the fieldset with the names in it.
  */
-function cms_contacts_form_status_organization_callback($form, &$form_state) {
-    return $form['status_organization_fieldset'];
+function cms_contacts_form_instrument_callback($form, &$form_state) {
+    return $form['instrument_fieldset'];
 }
 
 /**
@@ -793,39 +709,8 @@ function cms_contacts_form_status_organization_callback($form, &$form_state) {
  *
  * Increments the max counter and causes a rebuild.
  */
-function cms_contacts_form_add_more_add_one_status_organization($form, &$form_state) {
-    $form_state['num_status_organization']++;
-    $form_state['rebuild'] = TRUE;
-}
-
-/**
- * Submit handler for the "remove one" button.
- *
- * Decrements the max counter and causes a form rebuild.
- */
-function cms_contacts_form_remove_one_status_organization($form, &$form_state) {
-    if ($form_state['num_status_organization'] > 1) {
-        $form_state['num_status_organization']--;
-    }
-    $form_state['rebuild'] = TRUE;
-}
-
-/**
- * Callback for both ajax-enabled buttons.
- *
- * Selects and returns the fieldset with the names in it.
- */
-function cms_contacts_form_status_person_callback($form, &$form_state) {
-    return $form['status_person_fieldset'];
-}
-
-/**
- * Submit handler for the "add-one-more" button.
- *
- * Increments the max counter and causes a rebuild.
- */
-function cms_contacts_form_add_more_add_one_status_person($form, &$form_state) {
-    $form_state['num_status_person']++;
+function cms_contacts_form_add_more_add_one_instrument($form, &$form_state) {
+    $form_state['num_instrument']++;
     $form_state['rebuild'] = TRUE;
 
 }
@@ -835,9 +720,9 @@ function cms_contacts_form_add_more_add_one_status_person($form, &$form_state) {
  *
  * Decrements the max counter and causes a form rebuild.
  */
-function cms_contacts_form_remove_one_status_person($form, &$form_state) {
-    if ($form_state['num_status_person'] > 1) {
-        $form_state['num_status_person']--;
+function cms_contacts_form_remove_one_instrument($form, &$form_state) {
+    if ($form_state['num_instrument'] > 1) {
+        $form_state['num_instrument']--;
     }
     $form_state['rebuild'] = TRUE;
 }
