@@ -225,10 +225,19 @@ function cms_contacts_form($form, &$form_state, $contact) {
                 'class' => array('chosen-select-ctrl')
             ),
             '#size' => 5,
-            '#suffix' => '<br />',
         );
 
-
+        $form['instrument_fieldset'][$i]['is_nfp'] = array(
+            '#type' => 'radios',
+            '#required' => FALSE,
+            '#title' => t('Is NFP'),
+            '#options' => array(
+                "TRUE" => t('Yes'),
+                "FALSE" => t('No'),
+            ),
+            '#label' => 'inline',
+            '#suffix' => '<br />',
+        );
     }
 
     $form['instrument_fieldset']['add_instrument'] = array(
@@ -309,6 +318,7 @@ function cms_contacts_form($form, &$form_state, $contact) {
         '#title' => t('Country post'),
         '#options' => $country_options,
         '#default_value' => isset($contact['cpiso2'][0]) ? $contact['cpiso2'][0] : '',
+        '#description' => t('Country where the person is stationed if it differs from the country which they represent (e.g. Ambassadors).'),
     );
 
     $form['organization'] = array(

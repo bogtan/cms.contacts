@@ -608,6 +608,33 @@ function cms_contacts_form_submit($form, &$form_state) {
                     drupal_set_message(t('The contact could not be saved.'), 'error');
                     $form_state['rebuild'] = TRUE;
                 }else {
+                    if (array_key_exists('nfp_data', $data) && !empty($data['nfp_data'])) {
+                        foreach ($data['nfp_data'] as $index => $group_dn) {
+                            $agent->add_to_group($group_dn, array('uniqueMember' => $dn));
+                        }
+                    }
+
+                    if (array_key_exists('status_organization_data', $data) && !empty($data['status_organization_data'])) {
+                        foreach ($data['status_organization_data'] as $group_dn => $group_data) {
+                            $query = $agent->search($agent->base_dn, "(&(objectClass=" . CMS_INSTRUMENT_STATUS_ORGANIZATION . ")(o={$group_data['o']})(cn={$group_data['cn']})(uuid={$group_data['uuid']}))");
+                            $result = $agent->get_entries();
+
+                            if (!$result['count']) {
+                                $group = array(
+                                    'objectClass' => array('top', CMS_INSTRUMENT_STATUS_ORGANIZATION),
+                                    'cn' => $group_data['cn'],
+                                    'o' => $group_data['o'],
+                                    'uuid' => $group_data['uuid'],
+                                    'uniqueMember' => $dn,
+                                );
+
+                                $agent->add($group_dn, $group);
+                            }elseif (!in_array($dn, $result['uniqueMember'])) {
+                                $agent->add_to_group($result['dn'], array('uniqueMember' => $dn));
+                            }
+                        }
+                    }
+
 //                    CMSContacts::set_contact_related_content($uid, $form_state['values']['species'], 'species', 'field_species_experts');
                     watchdog('content', '@type: added %title.', $watchdog_args, WATCHDOG_NOTICE, $contact_link);
                     drupal_set_message(t('@type %title has been created.', $t_args));

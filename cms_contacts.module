@@ -342,6 +342,7 @@ class CMSContacts extends CMSBase {
         'preferred_language' => 'preferredLanguages',
         'additional_emails' => 'additionalEmails',
         'instrument_fieldset' => 'conventions',
+        'is_nfp' => 'is_nfp',
     );
 
     // Map Organization form fields to LDAP cmsOrganization attributes
@@ -654,6 +655,10 @@ class CMSContacts extends CMSBase {
 
                             if (isset($value['mailing_list'])) {
                                 $ldap_data['mailingLists'] = array_merge($ldap_data['mailingLists'], array_values($value['mailing_list']));
+                            }
+
+                            if (isset($value['is_nfp']) && (!empty($data['country']))) {
+                                $nfp_data = array_merge($nfp_data, array("iso2={$data['country']},{$value['instrument']}"));
                             }
                         }
                     }
