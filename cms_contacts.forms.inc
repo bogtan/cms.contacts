@@ -225,17 +225,6 @@ function cms_contacts_form($form, &$form_state, $contact) {
                 'class' => array('chosen-select-ctrl')
             ),
             '#size' => 5,
-        );
-
-        $form['instrument_fieldset'][$i]['is_nfp'] = array(
-            '#type' => 'radios',
-            '#required' => FALSE,
-            '#title' => t('Is NFP'),
-            '#options' => array(
-                "TRUE" => t('Yes'),
-                "FALSE" => t('No'),
-            ),
-            '#label' => 'inline',
             '#suffix' => '<br />',
         );
     }

@@ -607,6 +607,16 @@ class CMSContacts extends CMSBase {
     public static function prepare_user_data($data = array(), $edit = FALSE) {
         global $user;
         date_default_timezone_set("Europe/Berlin");
+        $focal_point_statuses = array(
+            'Focal Point',
+            'Coordinator',
+            'Administrative Focal Point',
+            'Scientific Focal Point',
+            'MOU Contact Point',
+            'Focal Point temporary',
+        );
+
+        $pattern = '/(cn\=(Contact\ Point)|(MOU\ Contact\ Point)|(Focal\ Point)|(Coordinator)|(Administrative\ Focal\ Point)|(Scientific\ Focal\ Point)|(Focal\ Point\ Temporary)\,(.*?))/';
 
         // Manually set attributes that are not coming from the Contacts' add/edit form
         $ldap_data = array(
@@ -646,6 +656,12 @@ class CMSContacts extends CMSBase {
                             $ldap_data['conventions'][] = $value['instrument'];
 
                             if (isset($value['person_status'])) {
+                                foreach ($value['person_status'] as $status) {
+                                    preg_match_all($pattern, $status, $matches);
+                                    if (isset($matches[1][0]) && (!empty($matches[1][0])) && (isset($data['country']))) {
+                                        $nfp_data[] = "iso2={$data['country']},{$value['instrument']}";
+                                    }
+                                }
                                 $ldap_data['statusPerson'] = array_merge($ldap_data['statusPerson'], array_values($value['person_status']));
                             }
 
@@ -655,10 +671,6 @@ class CMSContacts extends CMSBase {
 
                             if (isset($value['mailing_list'])) {
                                 $ldap_data['mailingLists'] = array_merge($ldap_data['mailingLists'], array_values($value['mailing_list']));
-                            }
-
-                            if (isset($value['is_nfp']) && (!empty($data['country']))) {
-                                $nfp_data = array_merge($nfp_data, array("iso2={$data['country']},{$value['instrument']}"));
                             }
                         }
                     }

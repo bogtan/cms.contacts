@@ -551,7 +551,7 @@ function cms_contacts_form_submit($form, &$form_state) {
             }else {
                 if (array_key_exists('nfp_data', $data) && !empty($data['nfp_data'])) {
                     foreach ($data['nfp_data'] as $index => $group_dn) {
-                        $agent->add_to_group($group_dn, array('uniqueMember' => $user['dn']));
+                        @$agent->add_to_group($group_dn, array('uniqueMember' => $user['dn']));
                     }
                 }
 
@@ -569,9 +569,9 @@ function cms_contacts_form_submit($form, &$form_state) {
                                 'uniqueMember' => $user['dn'],
                             );
 
-                            $agent->add($group_dn, $group);
+                            @$agent->add($group_dn, $group);
                         }elseif (!in_array($user['dn'], $result['uniqueMember'])) {
-                            $agent->add_to_group($result['dn'], array('uniqueMember' => $user['dn']));
+                            @$agent->add_to_group($result['dn'], array('uniqueMember' => $user['dn']));
                         }
                     }
                 }
